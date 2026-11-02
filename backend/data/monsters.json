@@ -1,0 +1,10 @@
+[
+  {"id":"goblin","name":"Goblin","description":"A quick dungeon raider.","base_hp":25,"base_attack":6,"base_defense":1,"gold_min":5,"gold_max":10,"score_reward":10,"loot_table":"common_monster_loot","tier":"normal"},
+  {"id":"skeleton_guard","name":"Skeleton Guard","description":"An old warrior guarding the dungeon.","base_hp":35,"base_attack":8,"base_defense":2,"gold_min":8,"gold_max":14,"score_reward":10,"loot_table":"common_monster_loot","tier":"normal"},
+  {"id":"slime","name":"Slime","description":"A stubborn gelatinous creature.","base_hp":30,"base_attack":5,"base_defense":1,"gold_min":4,"gold_max":9,"score_reward":10,"loot_table":"common_monster_loot","tier":"normal"},
+  {"id":"orc_warrior","name":"Orc Warrior","description":"A powerful dungeon brute.","base_hp":45,"base_attack":10,"base_defense":2,"gold_min":10,"gold_max":18,"score_reward":10,"loot_table":"common_monster_loot","tier":"normal"},
+  {"id":"elite_knight","name":"Elite Knight","description":"A veteran defender in heavy armor.","base_hp":65,"base_attack":12,"base_defense":5,"gold_min":18,"gold_max":28,"score_reward":25,"loot_table":"elite_loot","tier":"elite"},
+  {"id":"warden_of_ash","name":"Warden of Ash","description":"The first floor guardian.","base_hp":90,"base_attack":13,"base_defense":4,"gold_min":25,"gold_max":35,"score_reward":50,"loot_table":"boss_loot","tier":"boss","floor":1},
+  {"id":"frost_colossus","name":"Frost Colossus","description":"The second floor guardian.","base_hp":125,"base_attack":17,"base_defense":6,"gold_min":35,"gold_max":50,"score_reward":50,"loot_table":"boss_loot","tier":"boss","floor":2},
+  {"id":"dragon_regent","name":"Dragon Regent","description":"The final dungeon guardian.","base_hp":165,"base_attack":21,"base_defense":8,"gold_min":50,"gold_max":75,"score_reward":50,"loot_table":"boss_loot","tier":"boss","floor":3}
+]

@@ -1,0 +1,10 @@
+{
+  "room": {
+    "min_players": 2,
+    "max_players": 4
+  },
+  "server": {
+    "port": "8080",
+    "cors_allowed_origins": "http://localhost:5173"
+  }
+}

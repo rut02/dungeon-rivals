@@ -2,18 +2,21 @@
   "floor_count": 3,
   "depths": [
     { "depth": 0, "min_nodes": 1, "max_nodes": 1, "room_type": "START" },
-    { "depth": 1, "min_nodes": 2, "max_nodes": 2 },
+    { "depth": 1, "min_nodes": 2, "max_nodes": 3 },
     { "depth": 2, "min_nodes": 2, "max_nodes": 3 },
-    { "depth": 3, "min_nodes": 2, "max_nodes": 2 },
-    { "depth": 4, "min_nodes": 1, "max_nodes": 1, "room_type": "BOSS" }
+    { "depth": 3, "min_nodes": 2, "max_nodes": 3 },
+    { "depth": 4, "min_nodes": 2, "max_nodes": 3 },
+    { "depth": 5, "min_nodes": 2, "max_nodes": 2 },
+    { "depth": 6, "min_nodes": 1, "max_nodes": 1, "room_type": "BOSS" }
   ],
   "room_weights": {
-    "MONSTER": 40,
+    "MONSTER": 35,
     "TREASURE": 15,
     "SHOP": 10,
     "EVENT": 10,
     "REST": 10,
-    "ELITE": 15
+    "ELITE": 10,
+    "PUZZLE": 10
   },
   "difficulty_multipliers": [1.0, 1.25, 1.5],
   "guarantee_rest_or_treasure": true

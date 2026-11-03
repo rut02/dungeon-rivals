@@ -2,7 +2,6 @@ package playerstate
 
 import (
 	"errors"
-	"fmt"
 
 	"dungeon-rivals/backend/internal/items"
 )
@@ -16,6 +15,7 @@ var (
 	ErrInvalidSlot     = errors.New("INVALID_SLOT")
 	ErrWrongPhase      = errors.New("INVALID_PHASE")
 	ErrInvalidQuantity = errors.New("INVALID_QUANTITY")
+	ErrNotEnoughMP     = errors.New("NOT_ENOUGH_MANA")
 )
 
 type Stack struct {
@@ -33,20 +33,42 @@ type Equipment struct {
 // State is mutable server-owned player progression for a match.
 type State struct {
 	HP        int
+	MaxHP     int
+	MP        int
+	MaxMP     int
+	Level     int
+	EXP       int
+	MaxEXP    int
+	BaseATK   int
+	BaseDEF   int
+	BaseSPD   int
 	Gold      int
 	Score     int
 	Deaths    int
+	Kit       string
 	Inventory []Stack
 	Equipment Equipment
 }
 
 type StatsSnapshot struct {
-	HP      int `json:"hp"`
-	MaxHP   int `json:"max_hp"`
-	BaseATK int `json:"base_atk"`
-	BaseDEF int `json:"base_def"`
-	ATK     int `json:"atk"`
-	DEF     int `json:"def"`
+	HP                int    `json:"hp"`
+	MaxHP             int    `json:"max_hp"`
+	MP                int    `json:"mp"`
+	MaxMP             int    `json:"max_mp"`
+	Level             int    `json:"level"`
+	EXP               int    `json:"exp"`
+	MaxEXP            int    `json:"max_exp"`
+	BaseATK           int    `json:"base_atk"`
+	BaseDEF           int    `json:"base_def"`
+	BaseSPD           int    `json:"base_spd"`
+	ATK               int    `json:"atk"`
+	DEF               int    `json:"def"`
+	SPD               int    `json:"spd"`
+	Archetype         string `json:"archetype"`
+	WeaponSkill       string `json:"weapon_skill,omitempty"`
+	WeaponSkillCost   int    `json:"weapon_skill_cost,omitempty"`
+	WeaponSkillDesc   string `json:"weapon_skill_desc,omitempty"`
+	WeaponSkillTarget string `json:"weapon_skill_target,omitempty"`
 }
 
 type PrivateSnapshot struct {
@@ -54,31 +76,123 @@ type PrivateSnapshot struct {
 	Gold      int           `json:"gold"`
 	Score     int           `json:"score"`
 	Deaths    int           `json:"deaths"`
+	Kit       string        `json:"kit"`
 	Inventory []Stack       `json:"inventory"`
 	Equipment Equipment     `json:"equipment"`
 }
 
-// NewDefault creates the starting player state specified by the MVP plan.
+// NewDefault creates the starting player state with default items.
 func NewDefault(catalog *items.Catalog) (*State, error) {
-	for _, required := range []struct {
-		id       string
-		itemType items.Type
-		slot     string
-	}{
-		{"training_sword", items.Weapon, "weapon"},
-		{"cloth_armor", items.Armor, "armor"},
-		{"health_potion", items.Consumable, ""},
-	} {
-		item, ok := catalog.Get(required.id)
-		if !ok || item.Type != required.itemType || item.Slot != required.slot {
-			return nil, fmt.Errorf("required starting item %q is missing or invalid", required.id)
-		}
+	return &State{
+		HP:        100,
+		MaxHP:     100,
+		MP:        20,
+		MaxMP:     20,
+		Level:     1,
+		EXP:       0,
+		MaxEXP:    30,
+		BaseATK:   5,
+		BaseDEF:   0,
+		BaseSPD:   5,
+		Gold:      20,
+		Score:     0,
+		Kit:       "default",
+		Inventory: []Stack{{ItemID: "health_potion", Quantity: 1}},
+		Equipment: Equipment{Weapon: "training_sword", Armor: "cloth_armor"},
+	}, nil
+}
+
+// NewWithKit creates player state customized for the chosen starting loadout.
+func NewWithKit(catalog *items.Catalog, kit string) (*State, error) {
+	if kit == "" {
+		kit = "knight"
 	}
-	return &State{HP: 100, Gold: 20, Score: 0, Inventory: []Stack{{ItemID: "health_potion", Quantity: 1}}, Equipment: Equipment{Weapon: "training_sword", Armor: "cloth_armor"}}, nil
+	switch kit {
+	case "mage":
+		return &State{
+			HP:        85,
+			MaxHP:     85,
+			MP:        40,
+			MaxMP:     40,
+			Level:     1,
+			EXP:       0,
+			MaxEXP:    30,
+			BaseATK:   10,
+			BaseDEF:   0,
+			BaseSPD:   5,
+			Gold:      20,
+			Score:     0,
+			Kit:       "mage",
+			Inventory: []Stack{{ItemID: "mana_potion", Quantity: 2}, {ItemID: "health_potion", Quantity: 1}},
+			Equipment: Equipment{Weapon: "apprentice_staff", Armor: "mystic_robe"},
+		}, nil
+	case "rogue":
+		return &State{
+			HP:        95,
+			MaxHP:     95,
+			MP:        25,
+			MaxMP:     25,
+			Level:     1,
+			EXP:       0,
+			MaxEXP:    30,
+			BaseATK:   8,
+			BaseDEF:   1,
+			BaseSPD:   9,
+			Gold:      20,
+			Score:     0,
+			Kit:       "rogue",
+			Inventory: []Stack{{ItemID: "health_potion", Quantity: 2}, {ItemID: "smoke_bomb", Quantity: 1}},
+			Equipment: Equipment{Weapon: "twin_daggers", Armor: "shadow_vest"},
+		}, nil
+	case "ranger":
+		return &State{
+			HP:        100,
+			MaxHP:     100,
+			MP:        25,
+			MaxMP:     25,
+			Level:     1,
+			EXP:       0,
+			MaxEXP:    30,
+			BaseATK:   8,
+			BaseDEF:   2,
+			BaseSPD:   7,
+			Gold:      20,
+			Score:     0,
+			Kit:       "ranger",
+			Inventory: []Stack{{ItemID: "health_potion", Quantity: 2}, {ItemID: "mana_potion", Quantity: 1}},
+			Equipment: Equipment{Weapon: "hunting_bow", Armor: "scout_tunic"},
+		}, nil
+	default: // knight / warrior
+		return &State{
+			HP:        120,
+			MaxHP:     120,
+			MP:        20,
+			MaxMP:     20,
+			Level:     1,
+			EXP:       0,
+			MaxEXP:    30,
+			BaseATK:   7,
+			BaseDEF:   3,
+			BaseSPD:   3,
+			Gold:      20,
+			Score:     0,
+			Kit:       "knight",
+			Inventory: []Stack{{ItemID: "health_potion", Quantity: 2}},
+			Equipment: Equipment{Weapon: "iron_sword", Armor: "iron_armor"},
+		}, nil
+	}
 }
 
 func (s *State) Snapshot(catalog *items.Catalog) PrivateSnapshot {
-	return PrivateSnapshot{Stats: s.derived(catalog), Gold: s.Gold, Score: s.Score, Deaths: s.Deaths, Inventory: append([]Stack(nil), s.Inventory...), Equipment: s.Equipment}
+	return PrivateSnapshot{
+		Stats:     s.derived(catalog),
+		Gold:      s.Gold,
+		Score:     s.Score,
+		Deaths:    s.Deaths,
+		Kit:       s.Kit,
+		Inventory: append([]Stack(nil), s.Inventory...),
+		Equipment: s.Equipment,
+	}
 }
 
 // Stats returns server-derived combat stats for the current equipment.
@@ -98,8 +212,81 @@ func (s *State) RestoreHP(amount int, catalog *items.Catalog) {
 	s.HP = min(maximum, max(0, amount))
 }
 
+// RestoreMP recovers MP up to maximum.
+func (s *State) RestoreMP(amount int, catalog *items.Catalog) {
+	maximum := s.derived(catalog).MaxMP
+	s.MP = min(maximum, max(0, s.MP+amount))
+}
+
+// ConsumeMP spends MP if available.
+func (s *State) ConsumeMP(amount int) bool {
+	if s.MP < amount {
+		return false
+	}
+	s.MP -= amount
+	return true
+}
+
+// GainEXP awards EXP and performs level up with stat growth when threshold is reached.
+func (s *State) GainEXP(amount int, catalog *items.Catalog) bool {
+	if amount <= 0 {
+		return false
+	}
+	s.EXP += amount
+	leveledUp := false
+	for s.EXP >= s.MaxEXP {
+		s.EXP -= s.MaxEXP
+		s.Level++
+		s.MaxEXP = int(float64(s.MaxEXP) * 1.5)
+		s.MaxHP += 15
+		s.MaxMP += 5
+		s.BaseATK += 2
+		s.BaseDEF += 1
+		s.BaseSPD += 1
+		// Level up heal bonus
+		maxStats := s.derived(catalog)
+		s.HP = maxStats.MaxHP
+		s.MP = maxStats.MaxMP
+		leveledUp = true
+	}
+	return leveledUp
+}
+
 func (s *State) derived(catalog *items.Catalog) StatsSnapshot {
-	stats := StatsSnapshot{HP: s.HP, MaxHP: 100, BaseATK: 5, BaseDEF: 0, ATK: 5, DEF: 0}
+	baseMaxHP := s.MaxHP
+	if baseMaxHP == 0 {
+		baseMaxHP = 100
+	}
+	baseMaxMP := s.MaxMP
+	if baseMaxMP == 0 {
+		baseMaxMP = 20
+	}
+	baseATK := s.BaseATK
+	if baseATK == 0 {
+		baseATK = 5
+	}
+	baseSPD := s.BaseSPD
+	if baseSPD == 0 {
+		baseSPD = 5
+	}
+
+	stats := StatsSnapshot{
+		HP:        s.HP,
+		MaxHP:     baseMaxHP,
+		MP:        s.MP,
+		MaxMP:     baseMaxMP,
+		Level:     s.Level,
+		EXP:       s.EXP,
+		MaxEXP:    s.MaxEXP,
+		BaseATK:   baseATK,
+		BaseDEF:   s.BaseDEF,
+		BaseSPD:   baseSPD,
+		ATK:       baseATK,
+		DEF:       s.BaseDEF,
+		SPD:       baseSPD,
+		Archetype: "sword",
+	}
+
 	for _, id := range s.equippedIDs() {
 		if id == "" {
 			continue
@@ -111,9 +298,23 @@ func (s *State) derived(catalog *items.Catalog) StatsSnapshot {
 		stats.ATK += item.Stats.Attack
 		stats.DEF += item.Stats.Defense
 		stats.MaxHP += item.Stats.MaxHP
+		stats.MaxMP += item.Stats.MaxMP
+		stats.SPD += item.Stats.Speed
+		if item.Type == items.Weapon {
+			if item.Archetype != "" {
+				stats.Archetype = item.Archetype
+			}
+			stats.WeaponSkill = item.SkillName
+			stats.WeaponSkillCost = item.SkillCost
+			stats.WeaponSkillDesc = item.SkillDesc
+			stats.WeaponSkillTarget = item.SkillTarget
+		}
 	}
 	if stats.HP > stats.MaxHP {
 		stats.HP = stats.MaxHP
+	}
+	if stats.MP > stats.MaxMP {
+		stats.MP = stats.MaxMP
 	}
 	return stats
 }
@@ -199,37 +400,52 @@ func (s *State) Unequip(slot string, index *int, catalog *items.Catalog) error {
 	if err := add(&working, itemID, 1, catalog); err != nil {
 		return err
 	}
-	s.setSlot(slot, "", indexValue(index))
+	if items.Slot(slot) == items.SlotAccessory {
+		s.Equipment.Accessories[indexValue(index)] = ""
+	} else {
+		s.setSlot(slot, "", 0)
+	}
 	s.Inventory = working
 	s.clampHP(catalog)
 	return nil
 }
 
 func (s *State) Use(itemID, phase string, catalog *items.Catalog) error {
-	if phase != "dungeon" && phase != "preparation" && phase != "combat" && phase != "pvp" {
-		return ErrWrongPhase
-	}
 	item, ok := catalog.Get(itemID)
 	if !ok {
 		return ErrItemNotFound
 	}
-	if item.Type != items.Consumable || item.Effect == nil || (phase == "combat" && !item.UsableInCombat) {
+	if item.Type != items.Consumable {
 		return ErrItemNotUsable
 	}
-	if _, stack := findStack(s.Inventory, itemID); stack == nil {
-		return ErrItemNotFound
+	if phase == "lobby" {
+		return ErrWrongPhase
+	}
+	if phase == "combat" && !item.UsableInCombat {
+		return ErrWrongPhase
 	}
 	stats := s.derived(catalog)
-	if s.HP >= stats.MaxHP {
-		return ErrItemNotUsable
+	if item.Effect != nil {
+		if item.Effect.Type == "heal" && s.HP >= stats.MaxHP {
+			return ErrItemNotUsable
+		}
+		if item.Effect.Type == "heal_mp" && s.MP >= stats.MaxMP {
+			return ErrItemNotUsable
+		}
 	}
 	working := append([]Stack(nil), s.Inventory...)
 	if err := remove(&working, itemID, 1); err != nil {
 		return err
 	}
-	s.HP += item.Effect.Value
-	if s.HP > stats.MaxHP {
-		s.HP = stats.MaxHP
+	if item.Effect != nil {
+		switch item.Effect.Type {
+		case "heal":
+			s.HP = min(stats.MaxHP, s.HP+item.Effect.Value)
+		case "heal_mp":
+			s.MP = min(stats.MaxMP, s.MP+item.Effect.Value)
+		case "damage", "damage_aoe", "smoke", "speed_buff":
+			// Processed during combat resolution
+		}
 	}
 	s.Inventory = working
 	return nil
@@ -320,15 +536,18 @@ func findStack(inventory []Stack, itemID string) (int, *Stack) {
 	}
 	return -1, nil
 }
+
 func (s *State) equippedIDs() []string {
 	return []string{s.Equipment.Weapon, s.Equipment.Armor, s.Equipment.Helmet, s.Equipment.Accessories[0], s.Equipment.Accessories[1]}
 }
+
 func (s *State) clampHP(catalog *items.Catalog) {
 	stats := s.derived(catalog)
 	if s.HP > stats.MaxHP {
 		s.HP = stats.MaxHP
 	}
 }
+
 func (s *State) setSlot(slot, itemID string, index int) {
 	switch items.Slot(slot) {
 	case items.SlotWeapon:
@@ -341,6 +560,7 @@ func (s *State) setSlot(slot, itemID string, index int) {
 		s.Equipment.Accessories[index] = itemID
 	}
 }
+
 func indexValue(index *int) int {
 	if index == nil {
 		return 0

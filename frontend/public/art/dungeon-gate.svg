@@ -1,26 +1,122 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" fill="none">
   <defs>
-    <linearGradient id="stone" x1="195" y1="95" x2="700" y2="550" gradientUnits="userSpaceOnUse"><stop stop-color="#51465C"/><stop offset=".5" stop-color="#30293B"/><stop offset="1" stop-color="#191722"/></linearGradient>
-    <linearGradient id="portal" x1="450" y1="170" x2="450" y2="475" gradientUnits="userSpaceOnUse"><stop stop-color="#89D5D1"/><stop offset=".48" stop-color="#4E9D9D"/><stop offset="1" stop-color="#32606E"/></linearGradient>
-    <linearGradient id="gold" x1="280" y1="200" x2="640" y2="470" gradientUnits="userSpaceOnUse"><stop stop-color="#F0D49A"/><stop offset="1" stop-color="#9D704B"/></linearGradient>
-    <radialGradient id="mist" cx="0" cy="0" r="1" gradientTransform="matrix(0 257 -350 0 450 380)" gradientUnits="userSpaceOnUse"><stop stop-color="#6CC8C1" stop-opacity=".4"/><stop offset="1" stop-color="#6CC8C1" stop-opacity="0"/></radialGradient>
-    <filter id="glow" x="196" y="85" width="508" height="470" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="29"/></filter>
+    <!-- Dark Fantasy Gradients -->
+    <radialGradient id="abyss-glow" cx="450" cy="340" r="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7928ca" stop-opacity="0.6"/>
+      <stop offset="45%" stop-color="#b83280" stop-opacity="0.3"/>
+      <stop offset="75%" stop-color="#1a0b2e" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#0a0612" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="portal-core" cx="450" cy="330" r="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f6ad55" stop-opacity="0.9"/>
+      <stop offset="25%" stop-color="#dd6b20" stop-opacity="0.8"/>
+      <stop offset="60%" stop-color="#9b2c2c" stop-opacity="0.85"/>
+      <stop offset="90%" stop-color="#2d122d" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#0d0814"/>
+    </radialGradient>
+    <linearGradient id="gothic-stone" x1="180" y1="80" x2="720" y2="580" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3d354b"/>
+      <stop offset="35%" stop-color="#231d2e"/>
+      <stop offset="70%" stop-color="#15121c"/>
+      <stop offset="100%" stop-color="#0b0910"/>
+    </linearGradient>
+    <linearGradient id="blood-gold" x1="300" y1="120" x2="600" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffd166"/>
+      <stop offset="40%" stop-color="#e76f51"/>
+      <stop offset="80%" stop-color="#9d0208"/>
+      <stop offset="100%" stop-color="#370617"/>
+    </linearGradient>
+    <linearGradient id="iron-pillar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1a1622"/>
+      <stop offset="30%" stop-color="#3a3246"/>
+      <stop offset="70%" stop-color="#241e30"/>
+      <stop offset="100%" stop-color="#0f0d15"/>
+    </linearGradient>
+    <filter id="soft-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="22" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="ember-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
   </defs>
-  <ellipse cx="450" cy="385" fill="url(#mist)" rx="350" ry="257"/>
-  <circle cx="450" cy="315" r="165" fill="#6BC9C2" fill-opacity=".34" filter="url(#glow)"/>
-  <path d="M118 530c18-30 32-55 42-88 11-37 3-75 22-111 15-29 32-46 48-74 12-21 16-52 33-75 18-26 44-40 68-61 26-23 44-48 76-63 16-8 27-22 43-26 16 4 27 18 43 26 32 15 50 40 76 63 24 21 50 35 68 61 17 23 21 54 33 75 16 28 33 45 48 74 19 36 11 74 22 111 10 33 24 58 42 88H118Z" fill="#17151F" stroke="#403849" stroke-width="3"/>
-  <path d="M219 525V303c0-127 103-230 231-230s231 103 231 230v222H219Z" fill="url(#stone)" stroke="#81718B" stroke-opacity=".55" stroke-width="5"/>
-  <path d="M267 518V304c0-101 82-183 183-183s183 82 183 183v214H267Z" fill="#171923" stroke="#AA8B69" stroke-opacity=".7" stroke-width="4"/>
-  <path d="M310 515V306c0-77 63-140 140-140s140 63 140 140v209H310Z" fill="url(#portal)"/>
-  <path d="M310 515V306c0-77 63-140 140-140s140 63 140 140v209" stroke="#D9C18F" stroke-width="4"/>
-  <path d="M349 510V310c0-56 45-101 101-101s101 45 101 101v200" stroke="#B9F0E2" stroke-opacity=".55" stroke-width="2"/>
-  <path d="M383 416c22-27 43-40 67-40s45 13 67 40M400 457c17-15 33-22 50-22s33 7 50 22" stroke="#D6EBCF" stroke-opacity=".75" stroke-width="3" stroke-linecap="round"/>
-  <path d="M177 522V353l40-20v189M683 522V333l40 20v169" fill="#292433" stroke="#75667D" stroke-width="3"/>
-  <path d="m240 266 12-22 12 22 22 12-22 12-12 22-12-22-22-12 22-12ZM636 266l10-18 10 18 18 10-18 10-10 18-10-18-18-10 18-10Z" fill="url(#gold)"/>
-  <path d="M178 358h38M684 358h38M219 425h48M633 425h48" stroke="#D6B47B" stroke-opacity=".58" stroke-width="3"/>
-  <path d="M275 551h350l33 25H242l33-25Zm-49 42h448l25 19H201l25-19Z" fill="#332C3A" stroke="#65586D" stroke-width="2"/>
-  <path d="M333 527h234" stroke="#D9BE83" stroke-opacity=".7" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="450" cy="295" r="5" fill="#F2DAA5"/><circle cx="425" cy="327" r="3" fill="#F2DAA5"/><circle cx="478" cy="353" r="4" fill="#F2DAA5"/>
-  <path d="m133 287 7-13 7 13 13 7-13 7-7 13-7-13-13-7 13-7Zm621 53 6-11 6 11 11 6-11 6-6 11-6-11-11-6 11-6Z" fill="#E7C98D" fill-opacity=".8"/>
-  <path d="M99 526h702" stroke="#8E7A90" stroke-opacity=".4" stroke-width="2"/>
+
+  <!-- Dark Cavern Background & Vignette -->
+  <rect width="900" height="620" fill="#08060d"/>
+  <ellipse cx="450" cy="380" rx="420" ry="240" fill="url(#abyss-glow)"/>
+
+  <!-- Sinister Mountainous Crypt Silhouette -->
+  <path d="M0 620 L0 420 L75 380 L140 450 L220 320 L300 410 L380 260 L450 310 L520 260 L600 410 L680 320 L760 450 L825 380 L900 420 L900 620 Z" fill="#0d0a14" opacity="0.9"/>
+
+  <!-- Outer Gothic Arches (Cracked Stone & Spikes) -->
+  <path d="M120 560 L120 280 C120 110 270 30 450 30 C630 30 780 110 780 280 L780 560 Z" fill="url(#gothic-stone)" stroke="#4a3e5c" stroke-width="6"/>
+  
+  <!-- Architectural Spire Accents / Gargoyle Silhouettes -->
+  <polygon points="120,280 90,240 130,220" fill="#231d2e" stroke="#3d334d" stroke-width="2"/>
+  <polygon points="780,280 810,240 770,220" fill="#231d2e" stroke="#3d334d" stroke-width="2"/>
+  <polygon points="210,140 180,90 230,80" fill="#1c1626" stroke="#3d334d" stroke-width="2"/>
+  <polygon points="690,140 720,90 670,80" fill="#1c1626" stroke="#3d334d" stroke-width="2"/>
+  <polygon points="450,30 435,-15 450,-25 465,-15" fill="#e76f51" stroke="#ffd166" stroke-width="2"/>
+
+  <!-- Inner Ornate Keystone & Carved Skulls Arch -->
+  <path d="M170 560 L170 290 C170 145 295 75 450 75 C605 75 730 145 730 290 L730 560 Z" fill="#120e1a" stroke="url(#blood-gold)" stroke-width="5"/>
+  <path d="M220 560 L220 300 C220 180 320 120 450 120 C580 120 680 180 680 300 L680 560 Z" fill="#0a0710" stroke="#5d4a75" stroke-width="3"/>
+
+  <!-- Runic Inscriptions on Portal Ring -->
+  <g stroke="#f6ad55" stroke-width="2" stroke-linecap="round" opacity="0.85" filter="url(#ember-glow)">
+    <!-- Left Pillar Runes -->
+    <path d="M190 220 L205 235 L190 250 M197 220 L197 250"/>
+    <path d="M190 280 L205 280 M197 270 L197 300 M192 295 L202 275"/>
+    <path d="M190 340 L205 355 L190 370 M205 340 L190 355"/>
+    <path d="M190 410 L205 410 M197 400 L197 430"/>
+    <path d="M190 470 L200 485 L190 500"/>
+    <!-- Right Pillar Runes -->
+    <path d="M710 220 L695 235 L710 250 M703 220 L703 250"/>
+    <path d="M710 280 L695 280 M703 270 L703 300 M708 295 L698 275"/>
+    <path d="M710 340 L695 355 L710 370 M695 340 L710 355"/>
+    <path d="M710 410 L695 410 M703 400 L703 430"/>
+    <path d="M710 470 L700 485 L710 500"/>
+    <!-- Arch Keystone Runes -->
+    <path d="M435 55 L450 40 L465 55 M450 40 L450 70"/>
+  </g>
+
+  <!-- The Swirling Abyssal Void Portal -->
+  <path d="M265 550 L265 310 C265 210 350 155 450 155 C550 155 635 210 635 310 L635 550 Z" fill="url(#portal-core)" filter="url(#soft-glow)"/>
+
+  <!-- Portal Eye & Dimensional Vortex -->
+  <ellipse cx="450" cy="340" rx="90" ry="140" fill="#000000" opacity="0.6"/>
+  <path d="M380 340 C380 270 520 270 520 340 C520 410 380 410 380 340 Z" stroke="#ffd166" stroke-width="3" opacity="0.75" stroke-dasharray="14 8"/>
+  <ellipse cx="450" cy="340" rx="35" ry="55" fill="#fca311" opacity="0.85" filter="url(#soft-glow)"/>
+  <ellipse cx="450" cy="340" rx="12" ry="25" fill="#ffffff"/>
+
+  <!-- Massive Gothic Guard Pillars (Left & Right Flanks) -->
+  <rect x="60" y="240" width="70" height="340" fill="url(#iron-pillar)" stroke="#3e354a" stroke-width="3"/>
+  <rect x="770" y="240" width="70" height="340" fill="url(#iron-pillar)" stroke="#3e354a" stroke-width="3"/>
+  <polygon points="50,240 95,190 140,240" fill="#2a2235" stroke="#4a3e5c" stroke-width="2"/>
+  <polygon points="760,240 805,190 850,240" fill="#2a2235" stroke="#4a3e5c" stroke-width="2"/>
+
+  <!-- Braziers with Burning Soul-Fire -->
+  <!-- Left Brazier -->
+  <path d="M80 330 L110 330 L105 355 L85 355 Z" fill="#1c1626" stroke="#5d4c72" stroke-width="2"/>
+  <polygon points="95,300 85,330 105,330" fill="#e76f51" filter="url(#ember-glow)"/>
+  <circle cx="95" cy="315" r="8" fill="#ffd166"/>
+  <!-- Right Brazier -->
+  <path d="M790 330 L820 330 L815 355 L795 355 Z" fill="#1c1626" stroke="#5d4c72" stroke-width="2"/>
+  <polygon points="805,300 795,330 815,330" fill="#e76f51" filter="url(#ember-glow)"/>
+  <circle cx="805" cy="315" r="8" fill="#ffd166"/>
+
+  <!-- Stone Stairs Descending into the Abyss -->
+  <polygon points="190,560 710,560 750,580 150,580" fill="#1e1828" stroke="#3d334d" stroke-width="2"/>
+  <polygon points="140,580 760,580 810,610 90,610" fill="#15111d" stroke="#31293e" stroke-width="2"/>
+  <polygon points="80,610 820,610 850,630 50,630" fill="#0d0b13" stroke="#251f30" stroke-width="2"/>
+
+  <!-- Floating Embers and Ash Particles -->
+  <circle cx="280" cy="240" r="2.5" fill="#fca311" filter="url(#ember-glow)"/>
+  <circle cx="320" cy="190" r="3" fill="#ff4d6d" filter="url(#ember-glow)"/>
+  <circle cx="580" cy="210" r="3" fill="#fca311" filter="url(#ember-glow)"/>
+  <circle cx="620" cy="270" r="2" fill="#ffd166" filter="url(#ember-glow)"/>
+  <circle cx="430" cy="140" r="3.5" fill="#ffd166" filter="url(#ember-glow)"/>
+  <circle cx="470" cy="130" r="2" fill="#ff4d6d" filter="url(#ember-glow)"/>
+  <circle cx="390" cy="460" r="2.5" fill="#fca311"/>
+  <circle cx="510" cy="480" r="3" fill="#ffd166"/>
 </svg>

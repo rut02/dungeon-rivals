@@ -23,6 +23,7 @@ const (
 	EventRoom    RoomType   = "EVENT"
 	RestRoom     RoomType   = "REST"
 	BossRoom     RoomType   = "BOSS"
+	PuzzleRoom   RoomType   = "PUZZLE"
 	Locked       NodeStatus = "LOCKED"
 	Available    NodeStatus = "AVAILABLE"
 	InProgress   NodeStatus = "IN_PROGRESS"
@@ -121,8 +122,8 @@ func (c Config) Validate() error {
 			return fmt.Errorf("difficulty multipliers must be positive")
 		}
 	}
-	if len(c.Depths) != 5 {
-		return fmt.Errorf("exactly five depth specifications are required")
+	if len(c.Depths) < 5 {
+		return fmt.Errorf("at least five depth specifications are required")
 	}
 	for i, spec := range c.Depths {
 		if spec.Depth != i || spec.MinNodes < 1 || spec.MaxNodes < spec.MinNodes {
@@ -132,11 +133,12 @@ func (c Config) Validate() error {
 	if c.Depths[0].MinNodes != 1 || c.Depths[0].MaxNodes != 1 || c.Depths[0].RoomType != StartRoom {
 		return fmt.Errorf("depth 0 must contain one START node")
 	}
-	if c.Depths[4].MinNodes != 1 || c.Depths[4].MaxNodes != 1 || c.Depths[4].RoomType != BossRoom {
-		return fmt.Errorf("depth 4 must contain one BOSS node")
+	lastIdx := len(c.Depths) - 1
+	if c.Depths[lastIdx].MinNodes != 1 || c.Depths[lastIdx].MaxNodes != 1 || c.Depths[lastIdx].RoomType != BossRoom {
+		return fmt.Errorf("last depth must contain one BOSS node")
 	}
-	if c.Depths[1].MinNodes < 2 || c.Depths[3].MinNodes < 2 {
-		return fmt.Errorf("depths 1 and 3 must have at least two nodes")
+	if c.Depths[1].MinNodes < 2 || c.Depths[lastIdx-1].MinNodes < 2 {
+		return fmt.Errorf("depths 1 and %d must have at least two nodes", lastIdx-1)
 	}
 	weightSum := 0
 	for roomType, weight := range c.RoomWeights {
@@ -162,6 +164,7 @@ func Generate(seed uint64, cfg Config) (*State, error) {
 		floorNumber := floorIndex + 1
 		floor := Floor{Number: floorNumber, DifficultyMultiplier: cfg.DifficultyMultipliers[floorIndex]}
 		layers := make([][]int, len(cfg.Depths))
+		lastDepth := len(cfg.Depths) - 1
 		for _, spec := range cfg.Depths {
 			count := spec.MinNodes
 			if spec.MaxNodes > spec.MinNodes {
@@ -169,7 +172,7 @@ func Generate(seed uint64, cfg Config) (*State, error) {
 			}
 			for nodeIndex := 0; nodeIndex < count; nodeIndex++ {
 				typeForNode := spec.RoomType
-				if spec.Depth > 0 && spec.Depth < 4 {
+				if spec.Depth > 0 && spec.Depth < lastDepth {
 					typeForNode = weightedRoom(rng, cfg.RoomWeights)
 				}
 				node := Node{ID: fmt.Sprintf("f%d-d%d-n%d", floorNumber, spec.Depth, nodeIndex), Floor: floorNumber, Depth: spec.Depth, Type: typeForNode, Status: Locked, Connections: []string{}}
@@ -202,52 +205,40 @@ func (s *State) Move(nodeID string) error {
 	if floor == nil {
 		return ErrInvalidNode
 	}
-	index := findNodeIndex(floor, nodeID)
-	if index < 0 {
+	targetIndex := findNodeIndex(floor, nodeID)
+	if targetIndex < 0 {
 		return ErrInvalidNode
 	}
-	node := &floor.Nodes[index]
-	if node.Status != Available {
+	if floor.Nodes[targetIndex].Status != Available {
 		return ErrNodeUnavailable
 	}
-	currentIndex := findNodeIndex(floor, s.CurrentNodeID)
-	if currentIndex < 0 {
-		return ErrInvalidNode
-	}
-	connected := false
-	for _, next := range floor.Nodes[currentIndex].Connections {
-		if next == nodeID {
-			connected = true
-			break
-		}
-	}
-	if !connected {
-		return ErrNodeUnavailable
-	}
-	node.Status = InProgress
-	s.CurrentNodeID = nodeID
+	floor.Nodes[targetIndex].Status = InProgress
 	s.ActiveNodeID = nodeID
-	s.Progress = node.Depth
 	return nil
 }
 
-// ResolveActive marks the current encounter complete and opens its outgoing paths.
 func (s *State) ResolveActive(skipped bool) error {
 	if s.ActiveNodeID == "" {
-		return ErrEncounterActive
+		return ErrInvalidNode
 	}
 	floor := s.currentFloor()
 	if floor == nil {
 		return ErrInvalidNode
 	}
-	i := findNodeIndex(floor, s.ActiveNodeID)
-	if i < 0 {
+	activeIndex := findNodeIndex(floor, s.ActiveNodeID)
+	if activeIndex < 0 {
 		return ErrInvalidNode
 	}
+	s.CurrentNodeID = s.ActiveNodeID
+	status := Cleared
 	if skipped {
-		floor.Nodes[i].Status = Skipped
-	} else {
-		floor.Nodes[i].Status = Cleared
+		status = Skipped
+	}
+	floor.Nodes[activeIndex].Status = status
+	s.Progress = floor.Nodes[activeIndex].Depth
+	if floor.Nodes[activeIndex].Type == BossRoom {
+		s.CheckpointNodeID = s.ActiveNodeID
+	} else if floor.Nodes[activeIndex].Type == RestRoom {
 		s.CheckpointNodeID = s.ActiveNodeID
 	}
 	s.ActiveNodeID = ""
@@ -288,34 +279,26 @@ func (s *State) PrivateSnapshot() PrivateView {
 	return PrivateView{CurrentFloor: s.CurrentFloor, CurrentNodeID: s.CurrentNodeID, CheckpointNodeID: s.CheckpointNodeID, ActiveNodeID: s.ActiveNodeID, Progress: s.Progress, Completed: s.Completed, Floors: floors}
 }
 
-// AdvanceFloor opens the next floor after its boss is defeated, or marks the run complete.
 func (s *State) AdvanceFloor() (bool, error) {
-	if s.ActiveNodeID != "" {
-		return false, ErrEncounterActive
-	}
-	floor := s.currentFloor()
-	if floor == nil {
-		return false, ErrInvalidNode
-	}
-	idx := findNodeIndex(floor, s.CheckpointNodeID)
-	if idx < 0 || floor.Nodes[idx].Type != BossRoom || floor.Nodes[idx].Status != Cleared {
-		return false, ErrNodeUnavailable
-	}
 	if s.CurrentFloor >= len(s.Floors) {
 		s.Completed = true
 		return true, nil
 	}
 	s.CurrentFloor++
-	next := s.currentFloor()
-	start := findNodeIndex(next, "f"+fmt.Sprint(s.CurrentFloor)+"-d0-n0")
-	if start < 0 {
+	floor := s.currentFloor()
+	if floor == nil {
 		return false, ErrInvalidNode
 	}
-	next.Nodes[start].Status = Cleared
-	s.CurrentNodeID = next.Nodes[start].ID
+	idx := findNodeIndex(floor, fmt.Sprintf("f%d-d0-n0", s.CurrentFloor))
+	if idx < 0 {
+		idx = 0
+	}
+	floor.Nodes[idx].Status = Cleared
+	s.CurrentNodeID = floor.Nodes[idx].ID
 	s.CheckpointNodeID = s.CurrentNodeID
+	s.ActiveNodeID = ""
 	s.Progress = 0
-	s.unlockConnected(next, s.CurrentNodeID)
+	s.unlockConnected(floor, s.CurrentNodeID)
 	return false, nil
 }
 
@@ -369,8 +352,11 @@ func weightedRoom(rng *rand.Rand, weights map[RoomType]int) RoomType {
 	for _, weight := range weights {
 		total += weight
 	}
+	if total <= 0 {
+		return MonsterRoom
+	}
 	choice := rng.Intn(total)
-	for _, roomType := range []RoomType{MonsterRoom, TreasureRoom, ShopRoom, EventRoom, RestRoom, EliteRoom} {
+	for _, roomType := range []RoomType{MonsterRoom, TreasureRoom, ShopRoom, EventRoom, RestRoom, EliteRoom, PuzzleRoom} {
 		weight := weights[roomType]
 		if choice < weight {
 			return roomType
@@ -381,22 +367,17 @@ func weightedRoom(rng *rand.Rand, weights map[RoomType]int) RoomType {
 }
 
 func guaranteeRestOrTreasure(rng *rand.Rand, floor *Floor, layers [][]int) {
-	for _, index := range layers[1] {
-		if floor.Nodes[index].Type == RestRoom || floor.Nodes[index].Type == TreasureRoom {
-			return
+	if len(layers) < 3 {
+		return
+	}
+	for depth := 1; depth < len(layers)-1; depth++ {
+		for _, index := range layers[depth] {
+			if floor.Nodes[index].Type == RestRoom || floor.Nodes[index].Type == TreasureRoom {
+				return
+			}
 		}
 	}
-	for _, index := range layers[2] {
-		if floor.Nodes[index].Type == RestRoom || floor.Nodes[index].Type == TreasureRoom {
-			return
-		}
-	}
-	for _, index := range layers[3] {
-		if floor.Nodes[index].Type == RestRoom || floor.Nodes[index].Type == TreasureRoom {
-			return
-		}
-	}
-	layer := 1 + rng.Intn(3)
+	layer := 1 + rng.Intn(len(layers)-2)
 	index := layers[layer][rng.Intn(len(layers[layer]))]
 	if rng.Intn(2) == 0 {
 		floor.Nodes[index].Type = RestRoom
@@ -413,6 +394,7 @@ func findNodeIndex(floor *Floor, nodeID string) int {
 	}
 	return -1
 }
+
 func isDecisionRoom(roomType RoomType) bool {
-	return roomType == MonsterRoom || roomType == TreasureRoom || roomType == ShopRoom || roomType == EventRoom || roomType == RestRoom || roomType == EliteRoom
+	return roomType == MonsterRoom || roomType == TreasureRoom || roomType == ShopRoom || roomType == EventRoom || roomType == RestRoom || roomType == EliteRoom || roomType == PuzzleRoom
 }

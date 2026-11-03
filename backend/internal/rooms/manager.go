@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math"
 	mathrand "math/rand"
 	"strings"
 	"sync"
@@ -65,6 +64,7 @@ type PlayerSnapshot struct {
 	IsHost              bool   `json:"is_host"`
 	Ready               bool   `json:"ready"`
 	Connected           bool   `json:"connected"`
+	Kit                 string `json:"kit"`
 	Stage               string `json:"stage"`
 	Floor               int    `json:"floor"`
 	Progress            int    `json:"progress"`
@@ -101,6 +101,7 @@ type SelfSnapshot struct {
 	IsHost    bool             `json:"is_host"`
 	Ready     bool             `json:"ready"`
 	Connected bool             `json:"connected"`
+	Kit       string           `json:"kit"`
 	Private   *PrivateSnapshot `json:"private,omitempty"`
 }
 
@@ -132,6 +133,7 @@ type ResultEntry struct {
 	BossesDefeated int    `json:"bosses_defeated"`
 	Gold           int    `json:"gold"`
 }
+
 type ScoreEvent struct {
 	ID       string `json:"id"`
 	PlayerID string `json:"player_id"`
@@ -143,6 +145,7 @@ type ScoreEvent struct {
 type player struct {
 	ID, Name, Token   string
 	Ready, Connected  bool
+	Kit               string
 	Conn              interface{ WriteJSON(any) error }
 	RequestIDs        map[string]struct{}
 	RequestOrder      []string
@@ -226,8 +229,8 @@ func (m *Manager) Join(code, name string) (SessionResponse, error) {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	r := m.rooms[code]
-	if r == nil {
+	r, ok := m.rooms[code]
+	if !ok {
 		return SessionResponse{}, ErrRoomNotFound
 	}
 	if r.Phase != "lobby" {
@@ -242,7 +245,6 @@ func (m *Manager) Join(code, name string) (SessionResponse, error) {
 	}
 	r.Players = append(r.Players, p)
 	r.Version++
-	m.broadcastLocked(r, "room.player_joined", map[string]any{"player": snapshotPlayer(p, p.ID == r.HostID)})
 	m.broadcastSnapshotsLocked(r)
 	return sessionFor(r, p), nil
 }
@@ -250,13 +252,15 @@ func (m *Manager) Join(code, name string) (SessionResponse, error) {
 func (m *Manager) Preview(code string) (Preview, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	r := m.rooms[code]
-	if r == nil {
+	r, ok := m.rooms[code]
+	if !ok {
 		return Preview{}, ErrRoomNotFound
 	}
-	status := "waiting"
+	status := "open"
 	if r.Phase != "lobby" {
 		status = "started"
+	} else if len(r.Players) >= m.maxPlayers {
+		status = "full"
 	}
 	return Preview{RoomCode: r.Code, PlayerCount: len(r.Players), MaxPlayers: m.maxPlayers, Phase: r.Phase, Status: status}, nil
 }
@@ -264,32 +268,27 @@ func (m *Manager) Preview(code string) (Preview, error) {
 func (m *Manager) authenticate(code, playerID, token string, conn interface{ WriteJSON(any) error }) (*room, *player, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	r := m.rooms[code]
-	if r == nil {
+	r, ok := m.rooms[code]
+	if !ok {
 		return nil, nil, ErrRoomNotFound
 	}
-	for _, p := range r.Players {
-		if p.ID == playerID {
-			if subtle.ConstantTimeCompare([]byte(p.Token), []byte(token)) != 1 {
-				return nil, nil, ErrInvalidToken
-			}
-			p.Connected = true
-			p.Conn = conn
-			if p.RequestIDs == nil {
-				p.RequestIDs = make(map[string]struct{})
-			}
-			r.Version++
-			return r, p, nil
-		}
+	p := findPlayer(r, playerID)
+	if p == nil {
+		return nil, nil, ErrPlayerNotFound
 	}
-	return nil, nil, ErrPlayerNotFound
+	if subtle.ConstantTimeCompare([]byte(p.Token), []byte(token)) != 1 {
+		return nil, nil, ErrInvalidToken
+	}
+	p.Conn = conn
+	p.Connected = true
+	r.Version++
+	return r, p, nil
 }
 
-func (m *Manager) setReady(r *room, playerID string, ready bool) error {
+func (m *Manager) Ready(r *room, playerID string, ready bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	current := m.rooms[r.Code]
-	if current != r {
+	if r == nil || m.rooms[r.Code] != r {
 		return ErrRoomNotFound
 	}
 	if r.Phase != "lobby" {
@@ -301,14 +300,37 @@ func (m *Manager) setReady(r *room, playerID string, ready bool) error {
 	}
 	p.Ready = ready
 	r.Version++
+	m.broadcastLocked(r, "room.player_ready", map[string]any{"player_id": playerID, "ready": ready})
 	m.broadcastSnapshotsLocked(r)
 	return nil
 }
 
-func (m *Manager) start(r *room, playerID string) error {
+func (m *Manager) setReady(r *room, playerID string, ready bool) error { return m.Ready(r, playerID, ready) }
+func (m *Manager) start(r *room, playerID string) error { return m.Start(r, playerID) }
+
+func (m *Manager) selectKit(r *room, playerID, kit string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.rooms[r.Code] != r {
+	if r == nil || m.rooms[r.Code] != r {
+		return ErrRoomNotFound
+	}
+	if r.Phase != "lobby" {
+		return ErrInvalidPhase
+	}
+	p := findPlayer(r, playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.Kit = kit
+	r.Version++
+	m.broadcastSnapshotsLocked(r)
+	return nil
+}
+
+func (m *Manager) Start(r *room, playerID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r == nil || m.rooms[r.Code] != r {
 		return ErrRoomNotFound
 	}
 	if r.Phase != "lobby" {
@@ -337,7 +359,14 @@ func (m *Manager) start(r *room, playerID string) error {
 	}
 	initial := make(map[string]initialPlayer, len(r.Players))
 	for _, p := range r.Players {
-		state, err := playerstate.NewDefault(m.catalog)
+		kit := p.Kit
+		var state *playerstate.State
+		var err error
+		if kit == "" || kit == "default" {
+			state, err = playerstate.NewDefault(m.catalog)
+		} else {
+			state, err = playerstate.NewWithKit(m.catalog, kit)
+		}
 		if err != nil {
 			return err
 		}
@@ -379,8 +408,8 @@ func (m *Manager) disconnect(r *room, playerID string, conn interface{ WriteJSON
 		if p.Conn != conn {
 			return
 		}
-		p.Connected = false
 		p.Conn = nil
+		p.Connected = false
 		if r.HostID == playerID {
 			for _, candidate := range r.Players {
 				if candidate.ID != playerID && candidate.Connected {
@@ -427,7 +456,7 @@ func (m *Manager) snapshotLocked(r *room, meID string) Snapshot {
 		}
 		players = append(players, view)
 		if p.ID == meID {
-			me = SelfSnapshot{PlayerID: p.ID, Name: p.Name, Ready: p.Ready, Connected: p.Connected, IsHost: p.ID == r.HostID}
+			me = SelfSnapshot{PlayerID: p.ID, Name: p.Name, Ready: p.Ready, Connected: p.Connected, Kit: p.Kit, IsHost: p.ID == r.HostID}
 			if p.State != nil {
 				private := PrivateSnapshot{PrivateSnapshot: p.State.Snapshot(m.catalog), PvPActionsUsed: p.PvPActionsUsed, PvPActionsRemaining: max(0, 5-p.PvPActionsUsed), PvPScore: p.PvPScore, PvPDamage: p.PvPDamage, PvPKnockouts: p.PvPKnockouts}
 				if p.Dungeon != nil {
@@ -437,6 +466,7 @@ func (m *Manager) snapshotLocked(r *room, meID string) Snapshot {
 				if p.Combat != nil {
 					clone := *p.Combat
 					clone.Log = append([]string(nil), p.Combat.Log...)
+					clone.Enemies = append([]combat.Enemy(nil), p.Combat.Enemies...)
 					private.Combat = &clone
 				}
 				if p.Activity != nil {
@@ -459,6 +489,7 @@ func (m *Manager) broadcastSnapshotsLocked(r *room) {
 		}
 	}
 }
+
 func (m *Manager) broadcastLocked(r *room, event string, payload any) {
 	for _, p := range r.Players {
 		if p.Conn != nil {
@@ -466,8 +497,9 @@ func (m *Manager) broadcastLocked(r *room, event string, payload any) {
 		}
 	}
 }
+
 func snapshotPlayer(p *player, host bool) PlayerSnapshot {
-	view := PlayerSnapshot{PlayerID: p.ID, Name: p.Name, IsHost: host, Ready: p.Ready, Connected: p.Connected, Stage: "lobby"}
+	view := PlayerSnapshot{PlayerID: p.ID, Name: p.Name, IsHost: host, Ready: p.Ready, Connected: p.Connected, Kit: p.Kit, Stage: "lobby"}
 	if p.Dungeon != nil {
 		view.Stage = "exploring"
 		view.Completed = p.Dungeon.Completed
@@ -490,74 +522,25 @@ func snapshotPlayer(p *player, host bool) PlayerSnapshot {
 	}
 	return view
 }
-func findPlayer(r *room, id string) *player {
-	for _, p := range r.Players {
-		if p.ID == id {
-			return p
-		}
-	}
-	return nil
-}
-func cleanName(name string) string {
-	name = strings.TrimSpace(name)
-	if len([]rune(name)) > 24 {
-		return ""
-	}
-	return name
-}
-func sessionFor(r *room, p *player) SessionResponse {
-	return SessionResponse{RoomCode: r.Code, PlayerID: p.ID, ReconnectToken: p.Token, IsHost: p.ID == r.HostID, WSPath: "/ws"}
-}
-func newPlayer(name string) (*player, error) {
-	id, err := randomHex(16)
-	if err != nil {
-		return nil, err
-	}
-	token, err := randomHex(32)
-	if err != nil {
-		return nil, err
-	}
-	return &player{ID: id, Name: name, Token: token}, nil
-}
-func randomHex(size int) (string, error) {
-	b := make([]byte, size)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
-func randomSeed() (uint64, error) {
-	var seedBytes [8]byte
-	if _, err := rand.Read(seedBytes[:]); err != nil {
-		return 0, err
-	}
-	return binary.BigEndian.Uint64(seedBytes[:]), nil
-}
-func (m *Manager) newRoomCodeLocked() (string, error) {
-	for tries := 0; tries < 10; tries++ {
-		b := make([]byte, 6)
-		if _, err := rand.Read(b); err != nil {
-			return "", err
-		}
-		var code strings.Builder
-		for _, v := range b {
-			code.WriteByte(roomAlphabet[int(v)%len(roomAlphabet)])
-		}
-		if m.rooms[code.String()] == nil {
-			return code.String(), nil
-		}
-	}
-	return "", errors.New("ROOM_CODE_GENERATION_FAILED")
-}
 
-func (m *Manager) ServeCommand(r *room, playerID string, conn interface{ WriteJSON(any) error }, event string, payload map[string]any) error {
-	switch event {
+func (m *Manager) ServeCommand(r *room, playerID string, conn interface{ WriteJSON(any) error }, commandType string, payload map[string]any) error {
+	switch commandType {
 	case "lobby.ready":
 		ready, ok := payload["ready"].(bool)
 		if !ok {
 			return errors.New("INVALID_REQUEST")
 		}
-		return m.setReady(r, playerID, ready)
+		return m.Ready(r, playerID, ready)
+	case "lobby.select_kit":
+		kit, ok := payload["kit"].(string)
+		if !ok {
+			return errors.New("INVALID_REQUEST")
+		}
+		return m.selectKit(r, playerID, kit)
+	case "game.start":
+		return m.Start(r, playerID)
+	case "room.leave":
+		return m.leave(r, playerID, conn)
 	case "preparation.ready":
 		ready, ok := payload["ready"].(bool)
 		if !ok {
@@ -580,10 +563,8 @@ func (m *Manager) ServeCommand(r *room, playerID string, conn interface{ WriteJS
 			return errors.New("INVALID_REQUEST")
 		}
 		return m.kickDisconnected(r, playerID, targetID)
-	case "game.start":
-		return m.start(r, playerID)
-	case "room.leave":
-		return m.leave(r, playerID, conn)
+	case "room.replay", "lobby.restart":
+		return m.restartLobby(r, playerID)
 	case "inventory.equip":
 		itemID, hasItem := payload["item_id"].(string)
 		slot, hasSlot := payload["slot"].(string)
@@ -624,13 +605,26 @@ func (m *Manager) ServeCommand(r *room, playerID string, conn interface{ WriteJS
 			return errors.New("INVALID_REQUEST")
 		}
 		return m.moveDungeon(r, playerID, nodeID)
+	case "combat.dismiss":
+		return m.dismissCombat(r, playerID)
+	case "combat.select_target":
+		targetEnemy := 0
+		if val, ok := payload["target_enemy"].(float64); ok {
+			targetEnemy = int(val)
+		}
+		return m.selectCombatTarget(r, playerID, targetEnemy)
 	case "combat.action":
 		action, ok := payload["action"].(string)
 		if !ok {
 			return errors.New("INVALID_REQUEST")
 		}
 		itemID, _ := payload["item_id"].(string)
-		return m.combatAction(r, playerID, action, itemID)
+		targetEnemy := 0
+		if val, ok := payload["target_enemy"].(float64); ok {
+			targetEnemy = int(val)
+		}
+		skillID, _ := payload["skill_id"].(string)
+		return m.combatAction(r, playerID, action, itemID, targetEnemy, skillID)
 	case "room.action":
 		action, ok := payload["action"].(string)
 		if !ok {
@@ -642,6 +636,79 @@ func (m *Manager) ServeCommand(r *room, playerID string, conn interface{ WriteJS
 	default:
 		return errors.New("INVALID_ACTION")
 	}
+}
+
+func (m *Manager) dismissCombat(r *room, playerID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r == nil || m.rooms[r.Code] != r {
+		return ErrRoomNotFound
+	}
+	p := findPlayer(r, playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	if p.Combat != nil && p.Combat.Finished {
+		p.Combat = nil
+		r.Version++
+		m.broadcastSnapshotsLocked(r)
+	}
+	return nil
+}
+
+func (m *Manager) selectCombatTarget(r *room, playerID string, targetEnemy int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r == nil || m.rooms[r.Code] != r {
+		return ErrRoomNotFound
+	}
+	p := findPlayer(r, playerID)
+	if p == nil || p.Combat == nil || p.Combat.Finished {
+		return combat.ErrNoCombat
+	}
+	if targetEnemy >= 0 && targetEnemy < len(p.Combat.Enemies) && p.Combat.Enemies[targetEnemy].Alive {
+		p.Combat.SelectedEnemy = targetEnemy
+		p.Combat.SyncLegacyFields()
+		r.Version++
+		m.broadcastSnapshotsLocked(r)
+	}
+	return nil
+}
+
+func (m *Manager) restartLobby(r *room, playerID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r == nil || m.rooms[r.Code] != r {
+		return ErrRoomNotFound
+	}
+	if r.Phase != "results" {
+		return ErrInvalidPhase
+	}
+	r.Phase = "lobby"
+	r.Results = nil
+	r.ScoreEvents = nil
+	r.ScoreEventIDs = make(map[string]struct{})
+	for _, p := range r.Players {
+		p.Ready = false
+		p.State = nil
+		p.Dungeon = nil
+		p.Combat = nil
+		p.Activity = nil
+		p.PvPActionsUsed = 0
+		p.PvPScore = 0
+		p.PvPDamage = 0
+		p.PvPKnockouts = 0
+		p.PvPDeaths = 0
+		p.PvPPenalty = 0
+		p.PvPBonus = 0
+		p.PvPGuarding = false
+		p.PveScore = 0
+		p.BossesDefeated = 0
+	}
+	r.Version++
+	m.broadcastLocked(r, "game.phase_changed", map[string]any{"phase": r.Phase})
+	m.broadcastSnapshotsLocked(r)
+	return nil
 }
 
 func (m *Manager) moveDungeon(r *room, playerID, nodeID string) error {
@@ -657,34 +724,43 @@ func (m *Manager) moveDungeon(r *room, playerID, nodeID string) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	if p.Dungeon == nil {
+	if p.Dungeon == nil || p.State == nil {
 		return ErrInvalidPhase
+	}
+	if p.Activity != nil && !p.Activity.Completed {
+		return dungeon.ErrEncounterActive
+	}
+	if p.Combat != nil && !p.Combat.Finished {
+		return combat.ErrNoCombat
 	}
 	if err := p.Dungeon.Move(nodeID); err != nil {
 		return err
 	}
-	if m.monsters != nil {
-		floor := p.Dungeon.Floors[p.Dungeon.CurrentFloor-1]
-		var node dungeon.Node
-		for _, candidate := range floor.Nodes {
-			if candidate.ID == nodeID {
-				node = candidate
-				break
-			}
+	floor := p.Dungeon.Floors[p.Dungeon.CurrentFloor-1]
+	var node dungeon.Node
+	for _, candidate := range floor.Nodes {
+		if candidate.ID == nodeID {
+			node = candidate
+			break
 		}
-		if node.Type == dungeon.MonsterRoom || node.Type == dungeon.EliteRoom || node.Type == dungeon.BossRoom {
-			multiplier := floor.DifficultyMultiplier
-			seed := int64(p.Dungeon.Seed) + int64(node.Floor*1000+node.Depth*100+len(node.ID))
+	}
+	if node.Type == dungeon.MonsterRoom || node.Type == dungeon.EliteRoom || node.Type == dungeon.BossRoom {
+		p.Activity = nil
+		multiplier := floor.DifficultyMultiplier
+		seed := int64(p.Dungeon.Seed) + int64(node.Floor*1000+node.Depth*100+len(node.ID))
+		if m.monsters != nil {
 			state, _, err := m.monsters.Create(string(node.Type), node.Floor, multiplier, seed)
 			if err != nil {
 				_ = p.Dungeon.Respawn()
 				return err
 			}
 			p.Combat = state
-		} else if err := m.beginActivity(p, node); err != nil {
-			_ = p.Dungeon.Respawn()
-			return err
 		}
+	} else if err := m.beginActivity(p, node); err != nil {
+		_ = p.Dungeon.Respawn()
+		return err
+	} else {
+		p.Combat = nil
 	}
 	r.Version++
 	m.broadcastSnapshotsLocked(r)
@@ -718,7 +794,7 @@ func (m *Manager) mutatePlayerState(r *room, playerID string, action func(*playe
 	return nil
 }
 
-func (m *Manager) combatAction(r *room, playerID, action, itemID string) error {
+func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra ...any) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if r == nil || m.rooms[r.Code] != r {
@@ -735,30 +811,174 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string) error {
 		return combat.ErrNoCombat
 	}
 	enc := p.Combat
+	if len(extra) > 0 {
+		if val, ok := extra[0].(int); ok && val >= 0 && val < len(enc.Enemies) && enc.Enemies[val].Alive {
+			enc.SelectedEnemy = val
+		}
+	}
+	target := enc.Selected()
+	if target == nil && enc.AliveCount() > 0 {
+		for i := range enc.Enemies {
+			if enc.Enemies[i].Alive {
+				enc.SelectedEnemy = i
+				target = &enc.Enemies[i]
+				break
+			}
+		}
+	}
+	if target != nil && enc.HP > 0 && target.HP > enc.HP {
+		target.HP = enc.HP
+	}
+
 	rng := mathrand.New(mathrand.NewSource(int64(p.Dungeon.Seed) ^ int64(r.Version+1)))
 	finish := false
 	skipped := false
 	died := false
 	monsterDef := m.monsterByID(enc.MonsterID)
+	stats := p.State.Stats(m.catalog)
+
+	// Ranger First Strike on Turn 1
+	if stats.Archetype == "bow" && !enc.FirstStrike && target != nil {
+		firstDmg := max(1, stats.ATK/2)
+		target.HP = max(0, target.HP-firstDmg)
+		enc.FirstStrike = true
+		enc.Log = append(enc.Log, fmt.Sprintf("🏹 First Strike! You hit %s for %d damage before battle starts!", target.Name, firstDmg))
+		if target.HP == 0 {
+			target.Alive = false
+			enc.Log = append(enc.Log, target.Name+" was slain by your opening volley!")
+			target = enc.Selected()
+		}
+	}
+
 	switch action {
 	case "ATTACK":
-		damage := combat.Damage(p.State.Stats(m.catalog).ATK, enc.Defense)
-		enc.HP = max(0, enc.HP-damage)
-		enc.Log = append(enc.Log, fmt.Sprintf("You dealt %d damage.", damage))
-		if enc.HP == 0 {
+		if target == nil {
+			finish = true
+			break
+		}
+		playerFirst := stats.SPD >= target.Speed
+		dealDamage := func() {
+			dmg := combat.Damage(stats.ATK, target.Defense)
+			if stats.Archetype == "daggers" && rng.Intn(100) < 30 {
+				dmg = int(float64(dmg) * 1.8)
+				enc.Log = append(enc.Log, "💥 CRITICAL STRIKE!")
+			} else if stats.Archetype == "staff" {
+				dmg = combat.Damage(stats.ATK, int(float64(target.Defense)*0.6))
+			}
+			target.HP = max(0, target.HP-dmg)
+			enc.Log = append(enc.Log, fmt.Sprintf("You dealt %d damage to %s.", dmg, target.Name))
+			if target.HP == 0 {
+				target.Alive = false
+				enc.Log = append(enc.Log, target.Name+" was defeated!")
+			}
+		}
+
+		if playerFirst {
+			dealDamage()
+			if enc.AliveCount() == 0 {
+				finish = true
+			}
+		} else {
+			m.enemiesAttack(p, enc, stats, rng)
+			if p.State.HP == 0 {
+				died = true
+				finish = true
+			} else {
+				dealDamage()
+				if enc.AliveCount() == 0 {
+					finish = true
+				}
+			}
+		}
+
+	case "SKILL":
+		cost := stats.WeaponSkillCost
+		if cost <= 0 {
+			cost = 4
+		}
+		if !p.State.ConsumeMP(cost) {
+			return playerstate.ErrNotEnoughMP
+		}
+		enc.Log = append(enc.Log, fmt.Sprintf("⚡ You used %s! (-%d MP)", stats.WeaponSkill, cost))
+		if stats.WeaponSkillTarget == "aoe" {
+			for i := range enc.Enemies {
+				e := &enc.Enemies[i]
+				if !e.Alive {
+					continue
+				}
+				dmg := combat.Damage(int(float64(stats.ATK)*1.25), e.Defense)
+				e.HP = max(0, e.HP-dmg)
+				enc.Log = append(enc.Log, fmt.Sprintf("Hit %s for %d damage.", e.Name, dmg))
+				if e.HP == 0 {
+					e.Alive = false
+					enc.Log = append(enc.Log, e.Name+" was defeated!")
+				}
+			}
+		} else {
+			if target != nil {
+				dmg := combat.Damage(int(float64(stats.ATK)*1.6)+stats.DEF, target.Defense)
+				target.HP = max(0, target.HP-dmg)
+				enc.Log = append(enc.Log, fmt.Sprintf("Dealt %d devastating damage to %s!", dmg, target.Name))
+				if target.HP == 0 {
+					target.Alive = false
+					enc.Log = append(enc.Log, target.Name+" was defeated!")
+				}
+			}
+		}
+		if enc.AliveCount() == 0 {
 			finish = true
 		}
+
 	case "DEFEND":
 		enc.Guarding = true
-		enc.Log = append(enc.Log, "You brace for the next attack.")
+		enc.Log = append(enc.Log, "You raise your guard for the incoming turn.")
+		if stats.Archetype == "staff" {
+			p.State.RestoreMP(8, m.catalog)
+			enc.Log = append(enc.Log, "Mana Barrier restored 8 MP!")
+		}
+
 	case "USE_ITEM":
 		if itemID == "" {
 			return errors.New("INVALID_REQUEST")
 		}
-		if err := p.State.Use(itemID, "combat", m.catalog); err != nil {
-			return err
+		itemDef, ok := m.catalog.Get(itemID)
+		if !ok {
+			return errors.New("ITEM_NOT_FOUND")
 		}
-		enc.Log = append(enc.Log, "You used "+itemID+".")
+		if itemDef.Effect != nil && itemDef.Effect.Type == "damage_aoe" {
+			if err := p.State.Remove(itemID, 1); err != nil {
+				return err
+			}
+			enc.Log = append(enc.Log, fmt.Sprintf("💣 You hurled a %s dealing %d direct damage to all foes!", itemDef.Name, itemDef.Effect.Value))
+			for i := range enc.Enemies {
+				if enc.Enemies[i].Alive {
+					enc.Enemies[i].HP = max(0, enc.Enemies[i].HP-itemDef.Effect.Value)
+					if enc.Enemies[i].HP == 0 {
+						enc.Enemies[i].Alive = false
+						enc.Log = append(enc.Log, enc.Enemies[i].Name+" was destroyed!")
+					}
+				}
+			}
+			if enc.AliveCount() == 0 {
+				finish = true
+			}
+		} else if itemDef.Effect != nil && itemDef.Effect.Type == "smoke" {
+			if enc.Tier == "boss" {
+				return combat.ErrBossEscape
+			}
+			if err := p.State.Remove(itemID, 1); err != nil {
+				return err
+			}
+			skipped = true
+			finish = true
+			enc.Log = append(enc.Log, "💨 Smoke screen deployed! Escaped the encounter.")
+		} else {
+			if err := p.State.Use(itemID, "combat", m.catalog); err != nil {
+				return err
+			}
+			enc.Log = append(enc.Log, "You used "+itemDef.Name+".")
+		}
+
 	case "ESCAPE":
 		if enc.Tier == "boss" {
 			return combat.ErrBossEscape
@@ -768,29 +988,59 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string) error {
 			enc.Log = append(enc.Log, "You escaped the encounter.")
 			finish = true
 		} else {
-			enc.Log = append(enc.Log, "Escape failed.")
+			enc.Log = append(enc.Log, "Escape failed!")
 		}
 	default:
 		return combat.ErrInvalidAction
 	}
-	if !finish {
-		stats := p.State.Stats(m.catalog)
-		damage := combat.Damage(enc.Attack, stats.DEF)
-		if enc.Guarding {
-			damage = max(1, int(math.Floor(float64(damage)*.5)))
-			enc.Guarding = false
-		}
-		p.State.Damage(damage)
-		enc.Log = append(enc.Log, fmt.Sprintf("%s dealt %d damage.", enc.Name, damage))
+
+	// Counter-attack if enemies are alive and player did not act second
+	if !finish && !died && action != "ATTACK" {
+		m.enemiesAttack(p, enc, stats, rng)
 		if p.State.HP == 0 {
 			died = true
-			enc.Log = append(enc.Log, "You were defeated and returned to checkpoint.")
-			m.pveRespawn(p, rng)
 			finish = true
 		}
+	} else if !finish && !died && action == "ATTACK" {
+		playerFirst := target != nil && stats.SPD >= target.Speed
+		if playerFirst {
+			m.enemiesAttack(p, enc, stats, rng)
+			if p.State.HP == 0 {
+				died = true
+				finish = true
+			}
+		}
 	}
+
+	if died {
+		enc.Log = append(enc.Log, "💀 You were defeated and returned to checkpoint.")
+		m.pveRespawn(p, rng)
+		finish = true
+	}
+
+	if !finish {
+		p.State.RestoreMP(3, m.catalog)
+		enc.Guarding = false
+		enc.Turn++
+		for i := range enc.Enemies {
+			e := &enc.Enemies[i]
+			if !e.Alive {
+				continue
+			}
+			if enc.Turn%3 == 0 {
+				e.Intent = "HEAVY"
+				e.IntentValue = int(float64(e.Attack) * 1.8)
+			} else {
+				e.Intent = "ATTACK"
+				e.IntentValue = e.Attack
+			}
+		}
+	}
+
 	if finish {
+		enc.Finished = true
 		if !died {
+			enc.Victory = true
 			_ = p.Dungeon.ResolveActive(skipped)
 			if !skipped {
 				reward := rng.Intn(max(1, monsterDef.GoldMax-monsterDef.GoldMin+1)) + monsterDef.GoldMin
@@ -805,7 +1055,12 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string) error {
 				if m.recordScoreEvent(r, ScoreEvent{ID: "pve:monster:" + p.ID + ":" + p.Dungeon.CheckpointNodeID, PlayerID: p.ID, Category: "pve", Source: source, Points: monsterDef.ScoreReward}) {
 					p.State.Score += monsterDef.ScoreReward
 				}
-				enc.Log = append(enc.Log, fmt.Sprintf("Victory! +%d Gold, +%d Score.", reward, monsterDef.ScoreReward))
+				expReward := monsterDef.ScoreReward * 2
+				leveled := p.State.GainEXP(expReward, m.catalog)
+				enc.Log = append(enc.Log, fmt.Sprintf("🎉 Victory! +%d Gold, +%d Score, +%d EXP.", reward, monsterDef.ScoreReward, expReward))
+				if leveled {
+					enc.Log = append(enc.Log, fmt.Sprintf("🌟 LEVEL UP! You reached Level %d! All stats increased!", p.State.Level))
+				}
 				m.tryMonsterLoot(p, monsterDef, rng)
 				if monsterDef.Tier == "boss" {
 					completed, err := p.Dungeon.AdvanceFloor()
@@ -819,7 +1074,7 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string) error {
 							if m.recordScoreEvent(r, ScoreEvent{ID: "pve:dungeon:" + p.ID, PlayerID: p.ID, Category: "pve", Source: "dungeon_clear", Points: 40}) {
 								p.State.Score += 40
 							}
-							enc.Log = append(enc.Log, "Dungeon cleared: +40 Score.")
+							enc.Log = append(enc.Log, "🏆 Dungeon fully cleared! +40 Score.")
 						} else {
 							enc.Log = append(enc.Log, "Floor cleared: +20 Score.")
 						}
@@ -828,11 +1083,50 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string) error {
 				}
 			}
 		}
-		enc.Finished = true
 	}
+	enc.SyncLegacyFields()
 	r.Version++
 	m.broadcastSnapshotsLocked(r)
 	return nil
+}
+
+func (m *Manager) enemiesAttack(p *player, enc *combat.State, stats playerstate.StatsSnapshot, rng *mathrand.Rand) {
+	for i := range enc.Enemies {
+		e := &enc.Enemies[i]
+		if !e.Alive {
+			continue
+		}
+		rawDmg := e.Attack
+		if e.Intent == "HEAVY" {
+			rawDmg = e.IntentValue
+			enc.Log = append(enc.Log, fmt.Sprintf("⚠️ %s unleashes a HEAVY SMASH!", e.Name))
+		}
+		dmg := combat.Damage(rawDmg, stats.DEF)
+		if enc.Guarding {
+			if stats.Archetype == "daggers" && rng.Intn(100) < 50 {
+				dmg = 0
+				enc.Log = append(enc.Log, "💨 Shadow Dodge! You completely evaded the attack!")
+			} else if stats.Archetype == "sword" {
+				dmg = max(1, int(float64(dmg)*0.3))
+				reflect := max(1, dmg)
+				e.HP = max(0, e.HP-reflect)
+				enc.Log = append(enc.Log, fmt.Sprintf("🛡️ Shield Block! Reduced damage to %d and reflected %d to %s!", dmg, reflect, e.Name))
+			} else if stats.Archetype == "staff" {
+				dmg = max(1, int(float64(dmg)*0.4))
+				enc.Log = append(enc.Log, fmt.Sprintf("✨ Mana Barrier absorbed the hit! Took only %d damage.", dmg))
+			} else {
+				dmg = max(1, int(float64(dmg)*0.5))
+				enc.Log = append(enc.Log, fmt.Sprintf("🛡️ Guard reduced damage to %d.", dmg))
+			}
+		}
+		if dmg > 0 {
+			p.State.Damage(dmg)
+			enc.Log = append(enc.Log, fmt.Sprintf("%s dealt %d damage.", e.Name, dmg))
+		}
+		if p.State.HP == 0 {
+			break
+		}
+	}
 }
 
 func (m *Manager) maybePreparation(r *room) {
@@ -866,54 +1160,54 @@ func (m *Manager) setPreparationReady(r *room, playerID string, ready bool) erro
 	p.Ready = ready
 	r.Version++
 	if r.Phase == "preparation" {
-		all := true
-		for _, candidate := range r.Players {
-			if !candidate.Ready {
-				all = false
+		allReady := true
+		for _, player := range r.Players {
+			if !player.Ready {
+				allReady = false
 				break
 			}
 		}
-		if all {
+		if allReady {
 			m.startPvPLocked(r)
+			return nil
 		}
 	}
+	m.broadcastLocked(r, "preparation.player_ready", map[string]any{"player_id": playerID, "ready": ready})
 	m.broadcastSnapshotsLocked(r)
 	return nil
 }
 
 func (m *Manager) startPvPLocked(r *room) {
-	r.ScoreEventIDs = make(map[string]struct{})
-	r.ScoreEvents = nil
-	for _, p := range r.Players {
-		p.PvPActionsUsed = 0
-		p.PvPScore = 0
-		p.PvPScoreRemainder = 0
-		p.PvPDamage = 0
-		p.PvPKnockouts = 0
-		p.PvPDeaths = 0
-		p.PvPPenalty = 0
-		p.PvPBonus = 0
-		p.PvPGuarding = false
-		if p.State != nil {
-			p.PveScore = p.State.Score
-			p.State.RestoreHP(p.State.Stats(m.catalog).MaxHP, m.catalog)
+	for _, player := range r.Players {
+		if player.State != nil {
+			maxHP := player.State.Stats(m.catalog).MaxHP
+			player.State.RestoreHP(maxHP, m.catalog)
+			maxMP := player.State.Stats(m.catalog).MaxMP
+			player.State.RestoreMP(maxMP, m.catalog)
+			player.PveScore = player.State.Score
 		}
+		player.Ready = false
+		player.PvPActionsUsed = 0
+		player.PvPGuarding = false
 	}
 	r.Phase = "pvp"
 	r.Version++
 	m.broadcastLocked(r, "game.phase_changed", map[string]any{"phase": r.Phase})
+	m.broadcastSnapshotsLocked(r)
 }
 
 func (m *Manager) monsterByID(id string) combat.Monster {
-	if m.monsters != nil {
-		for _, v := range m.monsters.Monsters {
-			if v.ID == id {
-				return v
-			}
+	if m.monsters == nil {
+		return combat.Monster{}
+	}
+	for _, monster := range m.monsters.Monsters {
+		if monster.ID == id {
+			return monster
 		}
 	}
 	return combat.Monster{}
 }
+
 func (m *Manager) pveRespawn(p *player, rng *mathrand.Rand) {
 	p.State.Deaths++
 	p.State.Gold -= p.State.Gold / 5
@@ -935,12 +1229,18 @@ func (m *Manager) pveRespawn(p *player, rng *mathrand.Rand) {
 	maxHP := p.State.Stats(m.catalog).MaxHP
 	p.State.RestoreHP((maxHP+1)/2, m.catalog)
 }
+
 func playerstateRemoveOne(s *playerstate.State, id string) error { return s.Remove(id, 1) }
+
 func (m *Manager) tryMonsterLoot(p *player, monster combat.Monster, rng *mathrand.Rand) {
-	if rng.Intn(100) >= 25 {
+	if rng.Intn(100) >= 40 {
 		return
 	}
-	pool := []string{"health_potion", "iron_sword", "iron_armor", "leather_cap", "bronze_ring"}
+	pool := []string{
+		"health_potion", "greater_health_potion", "mana_potion",
+		"iron_sword", "crystal_wand", "shadowfang", "elven_recurve",
+		"chainmail_hauberk", "boots_of_haste", "thiefs_coin", "fire_bomb",
+	}
 	id := pool[rng.Intn(len(pool))]
 	if err := p.State.Add(id, 1, m.catalog); err == nil {
 		p.Combat.Log = append(p.Combat.Log, "Found "+id+".")
@@ -1029,4 +1329,61 @@ func (m *Manager) ClaimRequestID(r *room, playerID, requestID string) error {
 		p.RequestOrder = p.RequestOrder[:len(p.RequestOrder)-1]
 	}
 	return nil
+}
+
+func (m *Manager) newRoomCodeLocked() (string, error) {
+	for attempts := 0; attempts < 1000; attempts++ {
+		bytes := make([]byte, 4)
+		if _, err := rand.Read(bytes); err != nil {
+			return "", err
+		}
+		var codeBuilder strings.Builder
+		for _, b := range bytes {
+			codeBuilder.WriteByte(roomAlphabet[int(b)%len(roomAlphabet)])
+		}
+		code := codeBuilder.String()
+		if _, exists := m.rooms[code]; !exists {
+			return code, nil
+		}
+	}
+	return "", errors.New("ROOM_CODE_GENERATION_FAILED")
+}
+
+func newPlayer(name string) (*player, error) {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		return nil, err
+	}
+	id := hex.EncodeToString(bytes[:8])
+	token := hex.EncodeToString(bytes[8:])
+	return &player{ID: id, Name: name, Token: token, Ready: false, Connected: false, Kit: "default", RequestIDs: make(map[string]struct{})}, nil
+}
+
+func cleanName(name string) string {
+	trimmed := strings.TrimSpace(name)
+	if len(trimmed) > 20 {
+		return trimmed[:20]
+	}
+	return trimmed
+}
+
+func sessionFor(r *room, p *player) SessionResponse {
+	return SessionResponse{RoomCode: r.Code, PlayerID: p.ID, ReconnectToken: p.Token, IsHost: r.HostID == p.ID, WSPath: "/ws"}
+}
+
+func findPlayer(r *room, playerID string) *player {
+	for _, p := range r.Players {
+		if p.ID == playerID {
+			return p
+		}
+	}
+	return nil
+}
+
+func randomSeed() (uint64, error) {
+	var bytes [8]byte
+	if _, err := rand.Read(bytes[:]); err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint64(bytes[:]), nil
 }

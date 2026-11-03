@@ -1,0 +1,380 @@
+[
+  {
+    "id": "hero",
+    "category": "hero",
+    "name": "Dark Knight Slayer (Hero)",
+    "filename": "hero.png",
+    "prompt": "64-bit dark fantasy pixel art character sprite of a lone dark knight wanderer, clad in battle-worn black iron plate armor, tattered dark violet mantle hood, visor slit glowing with ethereal cyan soul flame eyes, ornate spiked gothic pauldrons with gold filigree, holding an ancient runic dark steel broadsword etched with pale blue runes, dramatic chiaroscuro rim lighting, micro pixel dithering, centered sprite, isolated on pure solid black background, Blasphemous and Castlevania aesthetic, clean crisp pixel edges, no background scenery, no text, no border frame"
+  },
+  {
+    "id": "flamebrand",
+    "category": "weapon",
+    "name": "Flamebrand",
+    "filename": "flamebrand.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Flamebrand, a terrifying greatsword forged from jagged black volcanic obsidian, molten orange magma pulsing through cracked glowing veins along the blade, dripping fire sparks and floating ash embers, crossguard sculpted like demonic gargoyle horns, charred leather wrapped hilt, dramatic chiaroscuro rim lighting, micro pixel dithering, centered RPG inventory sprite, isolated on pure solid black background, Blasphemous game art style, clean crisp pixel edges, no hands, no character holding, no background scenery, no border frame, no UI, no text"
+  },
+  {
+    "id": "excalibur",
+    "category": "weapon",
+    "name": "Excalibur",
+    "filename": "excalibur.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Excalibur, a holy fallen broadsword of radiant pale gold and celestial white steel, ancient divine runes etched into the blade glowing with faint spectral turquoise light, crossguard shaped like angelic wings with battle gouges, weathered ivory grip, solitary divine relic, volumetric rim lighting, centered RPG inventory asset, isolated on pure solid black background, Elden Ring inventory pixel art style, crisp pixel edges, no hands, no background scenery, no text"
+  },
+  {
+    "id": "knights_claymore",
+    "category": "weapon",
+    "name": "Knight's Claymore",
+    "filename": "knights_claymore.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Knight's Claymore, a massive two-handed gothic greatsword of blackened damascus steel, sharp serrated blood fuller, spiked heavy brass crossguard with chipped corners, dark crimson cord wrapped two-handed hilt, heavy executioner blade, dramatic edge highlights, micro pixel shading, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "iron_sword",
+    "category": "weapon",
+    "name": "Iron Sword",
+    "filename": "iron_sword.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of an Iron Sword, a forged dark steel arming sword with battle nicks, chipped double-edged blade, tarnished iron crossguard, weathered brown leather grip, round brass pommel, realistic dark medieval fantasy weapon, micro pixel dithering, centered RPG sprite, isolated on solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "training_sword",
+    "category": "weapon",
+    "name": "Training Sword",
+    "filename": "training_sword.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a Training Sword, weathered ash-wood practice blade with taped grip, nicked wooden edges, dark leather wrapped crossguard, humble beginner weapon, centered RPG item sprite, isolated on solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "void_scepter",
+    "category": "weapon",
+    "name": "Void Scepter",
+    "filename": "void_scepter.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of the Void Scepter, a gnarled scepter of petrified black wood and twisted iron thorns, clutching an eerie pulsating violet cosmic eyeball at its crown, swirling miniature galaxy vortex, dark purple energy wisps, sinister occult relic, micro pixel shading, isolated on solid black background, Path of Exile 2 pixel art style, no hands, no background, no text"
+  },
+  {
+    "id": "archmage_staff",
+    "category": "weapon",
+    "name": "Archmage Staff",
+    "filename": "archmage_staff.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of the Archmage Staff, polished dark mahogany wood stave bound in spiraling antique gold filigree, crowned with a levitating glowing emerald sphere surrounded by golden archangel wings, crackling green mana motes, centered RPG inventory sprite, isolated on solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "crystal_wand",
+    "category": "weapon",
+    "name": "Crystal Wand",
+    "filename": "crystal_wand.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a Crystal Wand, polished dark brass handle clutching a raw multifaceted amethyst purple crystal cluster at the tip, shooting subtle starlight sparkles, centered RPG inventory asset, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "wooden_staff",
+    "category": "weapon",
+    "name": "Wooden Staff",
+    "filename": "wooden_staff.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of an ancient carved Wooden Staff, gnarled ancient bog oak wood, head curved into a spiral rune containing a faint cyan glowing gemstone, ancient druidic relic, isolated on pure black background, no hands, no background, no text"
+  },
+  {
+    "id": "apprentice_staff",
+    "category": "weapon",
+    "name": "Apprentice Staff",
+    "filename": "apprentice_staff.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of an Apprentice Staff, slender carved hazel wood staff with wrapped leather grip, small pale sapphire crystal tied to the top with hemp twine, faint blue arcane glow, isolated on pure black background, no hands, no background, no text"
+  },
+  {
+    "id": "grim_scythe",
+    "category": "weapon",
+    "name": "Grim Scythe",
+    "filename": "grim_scythe.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of the Grim Scythe, a massive two-handed reaper war scythe, shaft carved from petrified dragon spine vertebrae, gigantic curved soul-stealing blade wreathed in ghostly cyan phantom flames, dark death relic, dramatic rim lighting, isolated on solid black background, Blasphemous style, no hands, no background, no text"
+  },
+  {
+    "id": "shadowfang",
+    "category": "weapon",
+    "name": "Shadowfang",
+    "filename": "shadowfang.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Shadowfang, an assassin's curved obsidian stiletto dagger, serrated spine dripping luminescent emerald toxic venom, wrapped in shadowy violet smoke tendrils, skull-shaped blackened steel pommel, dangerous assassin weapon, isolated on pure solid black background, clean pixel edges, no hands, no background, no text"
+  },
+  {
+    "id": "assassins_twinblades",
+    "category": "weapon",
+    "name": "Assassin's Twinblades",
+    "filename": "assassins_twinblades.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Assassin's Twinblades, a crossed pair of wicked hooked daggers of crimson damascus steel, serrated inner curve, dark leather wrapped grips, ruby encrusted pommels, isolated on pure black background, no hands, no background, no text"
+  },
+  {
+    "id": "iron_dagger",
+    "category": "weapon",
+    "name": "Iron Dagger",
+    "filename": "iron_dagger.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of an Iron Dagger, a sharp double-edged forged steel stiletto blade, blackened iron crossguard, brown cord hilt, tarnished metal sheen, centered RPG inventory sprite, isolated on pure black background, no hands, no background, no text"
+  },
+  {
+    "id": "dragons_breath_bow",
+    "category": "weapon",
+    "name": "Dragon's Breath Bow",
+    "filename": "dragons_breath_bow.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a recurve bow crafted from charred black dragon horn and ribbed scales, glowing molten crimson bowstring woven from dragon sinew, smoke and embers gently rising from the bow tips, deadly draconic craftsmanship, centered RPG inventory asset, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "windrunner_bow",
+    "category": "weapon",
+    "name": "Windrunner Bow",
+    "filename": "windrunner_bow.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Windrunner Bow, composite recurve bow of silvered alloy with cyan feathered aerodynamic wings, glowing translucent wind bowstring, ethereal swift weapon, centered RPG sprite, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "elven_recurve",
+    "category": "weapon",
+    "name": "Elven Recurve",
+    "filename": "elven_recurve.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of an Elven Recurve bow, dark ironwood bow limbs carved with thorny elven vine runes, glowing emerald leaf motifs, taut golden silk bowstring, centered RPG asset, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "hunting_bow",
+    "category": "weapon",
+    "name": "Hunting Bow",
+    "filename": "hunting_bow.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a Hunting Bow, curved seasoned yew shortbow, dark leather handle grip, bone notched tips, braided sinew bowstring, rustic survival weapon, isolated on pure black background, no hands, no background, no text"
+  },
+  {
+    "id": "aegis_shield",
+    "category": "shield",
+    "name": "Aegis Shield",
+    "filename": "aegis_shield.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of the Aegis Shield, a massive gothic tower shield made of beaten celestial gold and weathered dark iron, embossed with a stoic sun face surrounded by radiating sunbeams, heavy battle gouges, glowing golden runes around the rim, isolated on solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "iron_shield",
+    "category": "shield",
+    "name": "Iron Shield",
+    "filename": "iron_shield.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of an Iron Shield, kite shield of dark riveted iron plates, embossed with a gothic cross relief, chipped paint and battle scars, central iron boss, centered RPG item sprite, isolated on pure black background, no hands, no background, no text"
+  },
+  {
+    "id": "wooden_shield",
+    "category": "shield",
+    "name": "Wooden Shield",
+    "filename": "wooden_shield.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a Wooden Shield, round buckler shield made of weathered oak planks reinforced with rusted iron rim and central steel boss, battle hacked surface, isolated on pure black background, no hands, no background, no text"
+  },
+  {
+    "id": "dragonscale_armor",
+    "category": "armor",
+    "name": "Dragonscale Armor",
+    "filename": "dragonscale_armor.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of heavy cuirass chestplate forged from overlapping iridescent crimson and obsidian dragon scales, blackened steel gorget with carved dragon motifs, faint embers glowing between scale seams, isolated on solid black background, no character, no background, no text"
+  },
+  {
+    "id": "chainmail_hauberk",
+    "category": "armor",
+    "name": "Chainmail Hauberk",
+    "filename": "chainmail_hauberk.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a Chainmail Hauberk, heavy interlocking steel ringmail shirt with reinforced leather shoulder trim and iron buckles, metallic reflections, centered RPG sprite, isolated on pure solid black background, no character, no background, no text"
+  },
+  {
+    "id": "iron_armor",
+    "category": "armor",
+    "name": "Iron Armor",
+    "filename": "iron_armor.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Iron Armor, a gothic blackened iron cuirass with high collar gorget, heavy steel abdominal plates, weathered rivets and battle scars, centered RPG inventory sprite, isolated on pure black background, no character, no background, no text"
+  },
+  {
+    "id": "cloth_armor",
+    "category": "armor",
+    "name": "Cloth Armor",
+    "filename": "cloth_armor.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Cloth Armor, dark wanderer's quilted gambeson tunic of heavy padded linen, reinforced leather shoulder patches and twin brass buckles, isolated on pure black background, no character, no background, no text"
+  },
+  {
+    "id": "crown_of_kings",
+    "category": "helmet",
+    "name": "Crown of Kings",
+    "filename": "crown_of_kings.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of the Crown of Kings, a tarnished gothic blackened gold royal coronet, jagged spire crowns set with raw glowing blood rubies, stained with dried ancient blood, heavy grim aura of a fallen monarch, isolated on solid black background, no character, no background, no text"
+  },
+  {
+    "id": "shadow_cowl",
+    "category": "helmet",
+    "name": "Shadow Cowl",
+    "filename": "shadow_cowl.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a Shadow Cowl, shredded ethereal midnight-black cloth hood, void-like interior with twin glowing purple spectral eyes peering out, dark assassin headgear, isolated on pure solid black background, no character, no background, no text"
+  },
+  {
+    "id": "iron_helm",
+    "category": "helmet",
+    "name": "Iron Helm",
+    "filename": "iron_helm.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of an Iron Helm, closed gothic iron barbuta helmet, narrow eye slit, crest ridge with chipped steel, dark tarnished metal surface, isolated on pure black background, no character, no background, no text"
+  },
+  {
+    "id": "leather_cap",
+    "category": "helmet",
+    "name": "Leather Cap",
+    "filename": "leather_cap.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a Leather Cap, dark brown boiled leather ranger hood with reinforced stitching and small brass strap buckle, rustic survival headgear, isolated on pure black background, no character, no background, no text"
+  },
+  {
+    "id": "blood_chalice",
+    "category": "accessory",
+    "name": "Blood Chalice",
+    "filename": "blood_chalice.png",
+    "prompt": "64-bit dark fantasy pixel art inventory icon of the Blood Chalice, an antique tarnished gothic gold goblet engraved with anguished screaming faces, overflowing with thick glowing crimson blood, faint red ethereal mist drifting from the rim, dark occult relic, centered game icon, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "thiefs_coin",
+    "category": "accessory",
+    "name": "Thief's Coin",
+    "filename": "thiefs_coin.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Thief's Coin, an ancient cursed gold pirate medallion stamped with a grinning human skull, chipped irregular coin edges, glowing faintly with sickly yellow gold greed aura, isolated on solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "boots_of_haste",
+    "category": "accessory",
+    "name": "Boots of Haste",
+    "filename": "boots_of_haste.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Boots of Haste, sleek black dragonhide leather boots wreathed in ethereal swirling cyan wind trails and speed wisps, silver buckled straps, isolated on pure solid black background, no character, no background, no text"
+  },
+  {
+    "id": "swift_boots",
+    "category": "accessory",
+    "name": "Swift Boots",
+    "filename": "swift_boots.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of Swift Boots, supple tanned deerskin boots with wing-shaped silver buckles, lightweight traveling rogue footwear, isolated on pure solid black background, no character, no background, no text"
+  },
+  {
+    "id": "quiver_charm",
+    "category": "accessory",
+    "name": "Quiver Charm",
+    "filename": "quiver_charm.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a Quiver Charm, small leather pouch amulet with three miniature fletched arrows and black raven feathers hanging from iron beads, hunter talisman, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "apprentice_ring",
+    "category": "accessory",
+    "name": "Apprentice Ring",
+    "filename": "apprentice_ring.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of an Apprentice Ring, polished antique silver band setting a brilliant glowing round sapphire crystal, emitting gentle blue mana motes, centered RPG jewelry icon, isolated on pure black background, no hands, no background, no text"
+  },
+  {
+    "id": "bronze_ring",
+    "category": "accessory",
+    "name": "Bronze Ring",
+    "filename": "bronze_ring.png",
+    "prompt": "64-bit dark fantasy pixel art item icon of a Bronze Ring, thick weathered antique bronze signet band engraved with an ancient warrior rune, subtle metallic green patina, centered RPG jewelry icon, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "greater_health_potion",
+    "category": "consumable",
+    "name": "Greater Health Potion",
+    "filename": "greater_health_potion.png",
+    "prompt": "64-bit dark fantasy pixel art inventory icon of a Greater Health Potion, heavy faceted crystal flask caged in ornate blackened wrought iron filigree, filled with swirling glowing ruby red life elixir, cork sealed with red wax and skull stamp, glowing magical particles inside the glass, isolated on solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "health_potion",
+    "category": "consumable",
+    "name": "Health Potion",
+    "filename": "health_potion.png",
+    "prompt": "64-bit dark fantasy pixel art inventory icon of a Health Potion, spherical glass bottle filled with luminous crimson liquid, wooden cork stopper with twine tie, glowing red light bubbles within, isolated on solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "greater_mana_potion",
+    "category": "consumable",
+    "name": "Greater Mana Potion",
+    "filename": "greater_mana_potion.png",
+    "prompt": "64-bit dark fantasy pixel art inventory icon of a Greater Mana Potion, diamond-shaped blown glass flask bound in antique silver arcane rings, glowing with intense violet and cobalt blue celestial starlight, crackling miniature arcane lightning sparks trapped within, isolated on solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "mana_potion",
+    "category": "consumable",
+    "name": "Mana Potion",
+    "filename": "mana_potion.png",
+    "prompt": "64-bit dark fantasy pixel art inventory icon of a Mana Potion, round glass flask filled with glowing cobalt blue arcane fluid, brass neck collar and cork, faint cyan starlight vapors rising, isolated on solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "fire_bomb",
+    "category": "consumable",
+    "name": "Fire Bomb",
+    "filename": "fire_bomb.png",
+    "prompt": "64-bit dark fantasy pixel art inventory icon of a Fire Bomb, spiked black cast-iron round grenade with brass neck, burning sputtering spark fuse emitting orange sparks and smoke, dripping alchemical sulfur, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "smoke_bomb",
+    "category": "consumable",
+    "name": "Smoke Bomb",
+    "filename": "smoke_bomb.png",
+    "prompt": "64-bit dark fantasy pixel art inventory icon of a Smoke Bomb, round sealed clay sphere bound in dark twine, top vents puffing mysterious swirling violet and black obscuring mist, assassin escape tool, isolated on pure solid black background, no hands, no background, no text"
+  },
+  {
+    "id": "warden_of_ash",
+    "category": "monster",
+    "name": "Warden of Ash (Floor 1 Boss)",
+    "filename": "warden_of_ash.png",
+    "prompt": "64-bit dark fantasy pixel art boss sprite of Warden of Ash, a towering imposing cinder knight clad in scorched black obsidian plate armor, horned demonic skull crown engulfed in blazing fire, chest furnace glowing intensely with molten lava and cracking embers, wielding a colossal smoking volcanic stone warhammer, full body character sprite, dramatic fiery rim lighting, sinister gothic atmosphere, isolated on pure solid black background, Blasphemous and Dark Souls pixel art style, crisp pixel edges, no background scenery, no ground terrain, no text"
+  },
+  {
+    "id": "frost_colossus",
+    "category": "monster",
+    "name": "Frost Colossus (Floor 2 Boss)",
+    "filename": "frost_colossus.png",
+    "prompt": "64-bit dark fantasy pixel art boss sprite of Frost Colossus, an ancient monolithic crystalline ice titan, massive jagged glacial horns, piercing glowing cyan crystal eyes, heavy frozen blue stone shoulders, torso enclosing a trapped screaming frozen skull, hanging broken iron chains with icicles, full body monster sprite, chilling blue rim lighting, isolated on pure solid black background, crisp pixel edges, no ground, no scenery, no text"
+  },
+  {
+    "id": "dragon_regent",
+    "category": "monster",
+    "name": "Dragon Regent (Floor 3 Boss)",
+    "filename": "dragon_regent.png",
+    "prompt": "64-bit dark fantasy pixel art boss sprite of Dragon Regent, a supreme elder dragon sovereign, sweeping golden obsidian horns, razor sharp reptilian snout with glowing molten eyes, vast ragged obsidian wings with blood-red membranes, burning dragon core furnace chest glowing with yellow-white lava, lethal talons and spiked tail, full body dragon boss sprite, dramatic volcanic rim lighting, isolated on solid black background, no ground, no scenery, no text"
+  },
+  {
+    "id": "bat_swarm",
+    "category": "monster",
+    "name": "Bat Swarm",
+    "filename": "bat_swarm.png",
+    "prompt": "64-bit dark fantasy pixel art monster sprite of a Bat Swarm, cluster of three sinister vampiric cave bats in aggressive mid-air flight, jagged black leathery wings, glowing ruby red eyes, sharp fangs dripping saliva, subtle purple shadow mist trails, centered enemy sprite, isolated on pure solid black background, crisp pixel art, no background, no text"
+  },
+  {
+    "id": "goblin",
+    "category": "monster",
+    "name": "Goblin",
+    "filename": "goblin.png",
+    "prompt": "64-bit dark fantasy pixel art monster sprite of a Goblin dungeon raider, vicious hunched cave goblin with olive-green skin, long pointed ears, glowing sinister yellow eyes, jagged toothy snarl, tattered dark leather rags, holding a bloodstained serrated bone dagger, full body enemy sprite, isolated on pure solid black background, no background, no text"
+  },
+  {
+    "id": "goblin_archer",
+    "category": "monster",
+    "name": "Goblin Archer",
+    "filename": "goblin_archer.png",
+    "prompt": "64-bit dark fantasy pixel art monster sprite of a Goblin Archer, hunched green goblin scout in a dark camouflaged hood, glowing yellow eyes, drawing a notched wooden shortbow aimed forward, glowing venomous green arrow tip, full body enemy sprite, isolated on solid black background, no background, no text"
+  },
+  {
+    "id": "slime",
+    "category": "monster",
+    "name": "Slime",
+    "filename": "slime.png",
+    "prompt": "64-bit dark fantasy pixel art monster sprite of an Acidic Dungeon Slime, undulating mound of toxic necrotic green-purple translucent ooze, containing a floating human skull and cracked rib bones trapped inside, bubbling toxic venom blisters, wet glistening pixel highlights, isolated on pure solid black background, no background, no text"
+  },
+  {
+    "id": "skeleton_guard",
+    "category": "monster",
+    "name": "Skeleton Guard",
+    "filename": "skeleton_guard.png",
+    "prompt": "64-bit dark fantasy pixel art monster sprite of a Skeleton Guard, undead warrior skeleton wearing a horned rusted iron helmet, glowing cyan soul flames in eye sockets, exposed cracked ribcage, holding a round spiked iron shield and a chipped broadsword, full body enemy sprite, isolated on pure solid black background, no background, no text"
+  },
+  {
+    "id": "orc_warrior",
+    "category": "monster",
+    "name": "Orc Warrior",
+    "filename": "orc_warrior.png",
+    "prompt": "64-bit dark fantasy pixel art monster sprite of an Orc Warrior, massive muscular dark green orc brute, brutal iron spiked pauldrons, upward protruding jaw tusks, glowing blood-red eyes, deep torso battle scars, gripping a gigantic jagged executioner battleaxe, full body enemy sprite, isolated on solid black background, no background, no text"
+  },
+  {
+    "id": "elite_knight",
+    "category": "monster",
+    "name": "Elite Knight",
+    "filename": "elite_knight.png",
+    "prompt": "64-bit dark fantasy pixel art monster sprite of an Elite Knight, corrupted black paladin in heavy gothic fluted plate armor, horned crest helmet with glowing red visor slit, tattered dark crimson war cape, wielding a colossal corrupted runic greatsword wreathed in violet dark magic, full body elite sprite, isolated on pure solid black background, no background, no text"
+  },
+  {
+    "id": "shadow_assassin",
+    "category": "monster",
+    "name": "Shadow Assassin",
+    "filename": "shadow_assassin.png",
+    "prompt": "64-bit dark fantasy pixel art monster sprite of a Shadow Assassin, faceless obsidian masked wraith killer, shrouded in billowing violet shadow smoke, twin glowing amethyst eyes, wielding dual curved poisoned sickles, dynamic lethal stance, full body elite sprite, isolated on pure solid black background, no background, no text"
+  }
+]

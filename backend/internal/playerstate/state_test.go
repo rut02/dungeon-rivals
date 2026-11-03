@@ -101,3 +101,26 @@ func TestBackpackCapacityDoesNotPartiallyMutate(t *testing.T) {
 		}
 	}
 }
+
+func TestKitsAndLevelUp(t *testing.T) {
+	catalog := testCatalog(t)
+	for _, kit := range []string{"knight", "mage", "rogue", "ranger"} {
+		state, err := NewWithKit(catalog, kit)
+		if err != nil {
+			t.Fatalf("failed to create kit %s: %v", kit, err)
+		}
+		snap := state.Snapshot(catalog)
+		if snap.Stats.Level != 1 || snap.Stats.Archetype == "" {
+			t.Fatalf("invalid kit snapshot: %+v", snap)
+		}
+	}
+	mage, _ := NewWithKit(catalog, "mage")
+	leveled := mage.GainEXP(35, catalog)
+	if !leveled || mage.Level != 2 {
+		t.Fatalf("expected level 2, got level %d", mage.Level)
+	}
+	snap := mage.Snapshot(catalog)
+	if snap.Stats.Level != 2 || snap.Stats.BaseATK != 12 {
+		t.Fatalf("stats did not grow on level up: %+v", snap)
+	}
+}

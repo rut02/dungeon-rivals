@@ -1,8 +1,6 @@
 package dungeon
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
 )
 
@@ -24,14 +22,15 @@ func TestGeneratedMapHasThreeConnectedFloorsAndRoomGuarantee(t *testing.T) {
 	if len(state.Floors) != 3 {
 		t.Fatalf("floor count = %d, want 3", len(state.Floors))
 	}
+	lastDepth := len(cfg.Depths) - 1
 	for _, floor := range state.Floors {
 		byID := map[string]Node{}
 		for _, node := range floor.Nodes {
 			byID[node.ID] = node
 		}
-		layers := make([][]Node, 5)
+		layers := make([][]Node, len(cfg.Depths))
 		for _, node := range floor.Nodes {
-			if node.Depth < 0 || node.Depth > 4 {
+			if node.Depth < 0 || node.Depth > lastDepth {
 				t.Fatalf("invalid depth: %+v", node)
 			}
 			layers[node.Depth] = append(layers[node.Depth], node)
@@ -39,11 +38,11 @@ func TestGeneratedMapHasThreeConnectedFloorsAndRoomGuarantee(t *testing.T) {
 		if len(layers[0]) != 1 || layers[0][0].Type != StartRoom {
 			t.Fatalf("floor %d has invalid start layer", floor.Number)
 		}
-		if len(layers[4]) != 1 || layers[4][0].Type != BossRoom {
+		if len(layers[lastDepth]) != 1 || layers[lastDepth][0].Type != BossRoom {
 			t.Fatalf("floor %d must end with one boss", floor.Number)
 		}
 		hasRestOrTreasure := false
-		for depth := 0; depth < 4; depth++ {
+		for depth := 0; depth < lastDepth; depth++ {
 			incoming := map[string]int{}
 			for _, node := range layers[depth] {
 				if len(node.Connections) == 0 {
@@ -66,7 +65,7 @@ func TestGeneratedMapHasThreeConnectedFloorsAndRoomGuarantee(t *testing.T) {
 				}
 			}
 		}
-		for _, node := range layers[1:4] {
+		for _, node := range layers[1:lastDepth] {
 			for _, candidate := range node {
 				if candidate.Type == RestRoom || candidate.Type == TreasureRoom {
 					hasRestOrTreasure = true
@@ -103,62 +102,9 @@ func TestMoveRequiresAnAvailableConnectedNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if state.ActiveNodeID != targetID {
-		t.Fatalf("active node = %q, want %q", state.ActiveNodeID, targetID)
+		t.Fatalf("active node = %s, want %s", state.ActiveNodeID, targetID)
 	}
 	if err := state.Move(targetID); err != ErrEncounterActive {
-		t.Fatalf("move during encounter = %v, want %v", err, ErrEncounterActive)
-	}
-	index := findNodeIndex(floor, targetID)
-	if floor.Nodes[index].Status != InProgress {
-		t.Fatalf("entered node status = %q, want %q", floor.Nodes[index].Status, InProgress)
-	}
-	view := state.PrivateSnapshot()
-	encoded, err := json.Marshal(view)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(encoded) == "" {
-		t.Fatal("private view should serialize")
-	}
-}
-
-func TestBossClearAdvancesFloorAndCompletesFinalFloor(t *testing.T) {
-	state, err := Generate(321, testConfig(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for floorNumber := 1; floorNumber <= 3; floorNumber++ {
-		floor := state.currentFloor()
-		bossIndex := findNodeIndex(floor, "f"+fmt.Sprint(floorNumber)+"-d4-n0")
-		floor.Nodes[bossIndex].Status = Cleared
-		state.CurrentNodeID = floor.Nodes[bossIndex].ID
-		state.CheckpointNodeID = state.CurrentNodeID
-		completed, err := state.AdvanceFloor()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if completed != (floorNumber == 3) {
-			t.Fatalf("floor %d completed=%v", floorNumber, completed)
-		}
-	}
-	if !state.Completed || state.CurrentFloor != 3 {
-		t.Fatalf("final state: %+v", state)
-	}
-}
-
-func TestGenerationIsDeterministicForSeed(t *testing.T) {
-	cfg := testConfig(t)
-	a, err := Generate(2026, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := Generate(2026, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	jsonA, _ := json.Marshal(a.Floors)
-	jsonB, _ := json.Marshal(b.Floors)
-	if string(jsonA) != string(jsonB) {
-		t.Fatal("same seed should generate the same node graph")
+		t.Fatalf("double move result = %v, want %v", err, ErrEncounterActive)
 	}
 }

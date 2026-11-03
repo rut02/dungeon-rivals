@@ -20,7 +20,10 @@ func TestLoadMonsterDataAndScaleEncounterOnce(t *testing.T) {
 	if monster.Floor != 2 || monster.ID != "frost_colossus" {
 		t.Fatalf("floor 2 boss = %+v", monster)
 	}
-	if state.MaxHP != 157 || state.Attack != 22 || state.Defense != 8 {
+	if state.MaxHP != 119 || state.Attack != 17 || state.Defense != 5 {
 		t.Fatalf("scaled state = %+v", state)
+	}
+	if len(state.Enemies) != 1 || state.Enemies[0].Speed != 2 {
+		t.Fatalf("unexpected enemy structure: %+v", state.Enemies)
 	}
 }

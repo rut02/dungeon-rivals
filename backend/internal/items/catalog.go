@@ -28,6 +28,8 @@ type Stats struct {
 	Attack  int `json:"attack"`
 	Defense int `json:"defense"`
 	MaxHP   int `json:"max_hp"`
+	MaxMP   int `json:"max_mp,omitempty"`
+	Speed   int `json:"speed,omitempty"`
 }
 
 type Effect struct {
@@ -48,6 +50,11 @@ type Definition struct {
 	Stackable      bool    `json:"stackable"`
 	MaxStack       int     `json:"max_stack"`
 	UsableInCombat bool    `json:"usable_in_combat"`
+	Archetype      string  `json:"archetype,omitempty"`
+	SkillName      string  `json:"skill_name,omitempty"`
+	SkillCost      int     `json:"skill_cost,omitempty"`
+	SkillDesc      string  `json:"skill_desc,omitempty"`
+	SkillTarget    string  `json:"skill_target,omitempty"`
 }
 
 type Catalog struct{ byID map[string]Definition }
@@ -87,6 +94,13 @@ func (c *Catalog) ValidateStartingItems() error {
 		{"training_sword", Weapon, "weapon"},
 		{"cloth_armor", Armor, "armor"},
 		{"health_potion", Consumable, ""},
+		{"apprentice_staff", Weapon, "weapon"},
+		{"mystic_robe", Armor, "armor"},
+		{"mana_potion", Consumable, ""},
+		{"twin_daggers", Weapon, "weapon"},
+		{"shadow_vest", Armor, "armor"},
+		{"hunting_bow", Weapon, "weapon"},
+		{"scout_tunic", Armor, "armor"},
 	} {
 		item, ok := c.Get(required.id)
 		if !ok || item.Type != required.itemType || item.Slot != required.slot {
@@ -137,8 +151,8 @@ func validate(item Definition) error {
 	if item.Rarity != "common" && item.Rarity != "rare" && item.Rarity != "epic" && item.Rarity != "legendary" {
 		return fmt.Errorf("invalid rarity %q", item.Rarity)
 	}
-	if item.Price < 0 || item.Stats.Attack < 0 || item.Stats.Defense < 0 || item.Stats.MaxHP < 0 {
-		return fmt.Errorf("price and stats cannot be negative")
+	if item.Price < 0 || item.Stats.Attack < 0 || item.Stats.Defense < 0 || item.Stats.MaxHP < 0 || item.Stats.MaxMP < 0 {
+		return fmt.Errorf("price and stats (atk, def, max_hp, max_mp) cannot be negative")
 	}
 	if item.Stackable && item.MaxStack < 2 {
 		return fmt.Errorf("stackable item must have max_stack of at least 2")
@@ -170,8 +184,9 @@ func validate(item Definition) error {
 		if item.Effect == nil {
 			return fmt.Errorf("consumable must define an effect")
 		}
-		if item.Effect.Type != "heal" || item.Effect.Value < 1 {
-			return fmt.Errorf("unsupported or invalid consumable effect")
+		validEffects := map[string]bool{"heal": true, "heal_mp": true, "damage": true, "damage_aoe": true, "speed_buff": true, "smoke": true}
+		if !validEffects[item.Effect.Type] || item.Effect.Value < 0 {
+			return fmt.Errorf("unsupported or invalid consumable effect %q", item.Effect.Type)
 		}
 	default:
 		return fmt.Errorf("invalid item type %q", item.Type)

@@ -19,6 +19,7 @@ type Monster struct {
 	BaseHP      int    `json:"base_hp"`
 	BaseAttack  int    `json:"base_attack"`
 	BaseDefense int    `json:"base_defense"`
+	Speed       int    `json:"speed,omitempty"`
 	GoldMin     int    `json:"gold_min"`
 	GoldMax     int    `json:"gold_max"`
 	ScoreReward int    `json:"score_reward"`
@@ -28,17 +29,44 @@ type Monster struct {
 }
 
 type Catalog struct{ Monsters []Monster }
+
+type Enemy struct {
+	Index       int    `json:"index"`
+	MonsterID   string `json:"monster_id"`
+	Name        string `json:"name"`
+	Tier        string `json:"tier"`
+	HP          int    `json:"hp"`
+	MaxHP       int    `json:"max_hp"`
+	Attack      int    `json:"attack"`
+	Defense     int    `json:"defense"`
+	Speed       int    `json:"speed"`
+	Intent      string `json:"intent"` // "ATTACK", "HEAVY", "BUFF"
+	IntentValue int    `json:"intent_value"`
+	Alive       bool   `json:"alive"`
+}
+
 type State struct {
-	MonsterID string   `json:"monster_id"`
-	Name      string   `json:"name"`
-	Tier      string   `json:"tier"`
-	HP        int      `json:"hp"`
-	MaxHP     int      `json:"max_hp"`
-	Attack    int      `json:"attack"`
-	Defense   int      `json:"defense"`
-	Guarding  bool     `json:"guarding"`
-	Finished  bool     `json:"finished"`
-	Log       []string `json:"log"`
+	Enemies       []Enemy  `json:"enemies"`
+	SelectedEnemy int      `json:"selected_enemy"`
+	Turn          int      `json:"turn"`
+	Finished      bool     `json:"finished"`
+	Victory       bool     `json:"victory"`
+	Guarding      bool     `json:"guarding"`
+	FirstStrike   bool     `json:"first_strike"`
+	EscapeSuccess bool     `json:"escape_success"`
+	Log           []string `json:"log"`
+
+	// Backward compatibility fields for legacy clients
+	MonsterID   string `json:"monster_id"`
+	Name        string `json:"name"`
+	Tier        string `json:"tier"`
+	HP          int    `json:"hp"`
+	MaxHP       int    `json:"max_hp"`
+	Attack      int    `json:"attack"`
+	Defense     int    `json:"defense"`
+	Speed       int    `json:"speed"`
+	Intent      string `json:"intent"`
+	IntentValue int    `json:"intent_value"`
 }
 
 var (
@@ -101,13 +129,147 @@ func (c *Catalog) Create(roomType string, floor int, multiplier float64, seed in
 		return nil, Monster{}, ErrNoMonsters
 	}
 	rng := rand.New(rand.NewSource(seed))
-	m := pool[rng.Intn(len(pool))]
+
 	scale := func(v int) int { return int(math.Ceil(float64(v) * multiplier)) }
-	copy := m
-	copy.BaseHP = scale(m.BaseHP)
-	copy.BaseAttack = scale(m.BaseAttack)
-	copy.BaseDefense = scale(m.BaseDefense)
-	return &State{MonsterID: m.ID, Name: m.Name, Tier: m.Tier, HP: copy.BaseHP, MaxHP: copy.BaseHP, Attack: copy.BaseAttack, Defense: copy.BaseDefense, Log: []string{m.Name + " appears."}}, copy, nil
+
+	// Determine enemy count
+	count := 1
+	if tier == "normal" {
+		if floor == 1 {
+			count = 1
+		} else if floor == 2 {
+			if rng.Intn(100) < 55 {
+				count = 2
+			} else {
+				count = 1
+			}
+		} else {
+			r := rng.Intn(100)
+			if r < 30 {
+				count = 1
+			} else if r < 75 {
+				count = 2
+			} else {
+				count = 3
+			}
+		}
+	}
+
+	enemies := make([]Enemy, 0, count)
+	log := make([]string, 0, 4)
+
+	for i := 0; i < count; i++ {
+		m := pool[rng.Intn(len(pool))]
+		hp := scale(m.BaseHP)
+		atk := scale(m.BaseAttack)
+		def := scale(m.BaseDefense)
+		spd := m.Speed
+		if spd == 0 {
+			spd = 4
+		}
+		intent := "ATTACK"
+		intentVal := atk
+		// Bosses have a heavy attack prepared for round 2 or 3
+		if m.Tier == "boss" {
+			intent = "ATTACK"
+			intentVal = atk
+		}
+		name := m.Name
+		if count > 1 {
+			name = fmt.Sprintf("%s #%d", m.Name, i+1)
+		}
+		enemies = append(enemies, Enemy{
+			Index:       i,
+			MonsterID:   m.ID,
+			Name:        name,
+			Tier:        m.Tier,
+			HP:          hp,
+			MaxHP:       hp,
+			Attack:      atk,
+			Defense:     def,
+			Speed:       spd,
+			Intent:      intent,
+			IntentValue: intentVal,
+			Alive:       true,
+		})
+		log = append(log, name+" appears!")
+	}
+
+	primaryMonster := pool[0]
+	for _, m := range pool {
+		if m.ID == enemies[0].MonsterID {
+			primaryMonster = m
+			break
+		}
+	}
+
+	state := &State{
+		Enemies:       enemies,
+		SelectedEnemy: 0,
+		Turn:          1,
+		Finished:      false,
+		Victory:       false,
+		Guarding:      false,
+		FirstStrike:   false,
+		Log:           log,
+	}
+	state.SyncLegacyFields()
+
+	return state, primaryMonster, nil
+}
+
+func (s *State) SyncLegacyFields() {
+	if len(s.Enemies) == 0 {
+		return
+	}
+	// Select first alive enemy or default to 0
+	targetIndex := s.SelectedEnemy
+	if targetIndex < 0 || targetIndex >= len(s.Enemies) || !s.Enemies[targetIndex].Alive {
+		for i, e := range s.Enemies {
+			if e.Alive {
+				targetIndex = i
+				s.SelectedEnemy = i
+				break
+			}
+		}
+	}
+	target := s.Enemies[targetIndex]
+	s.MonsterID = target.MonsterID
+	s.Name = target.Name
+	s.Tier = target.Tier
+	s.HP = target.HP
+	s.MaxHP = target.MaxHP
+	s.Attack = target.Attack
+	s.Defense = target.Defense
+	s.Speed = target.Speed
+	s.Intent = target.Intent
+	s.IntentValue = target.IntentValue
+}
+
+func (s *State) AliveCount() int {
+	count := 0
+	for _, e := range s.Enemies {
+		if e.Alive {
+			count++
+		}
+	}
+	return count
+}
+
+func (s *State) Selected() *Enemy {
+	if len(s.Enemies) == 0 {
+		return nil
+	}
+	if s.SelectedEnemy >= 0 && s.SelectedEnemy < len(s.Enemies) && s.Enemies[s.SelectedEnemy].Alive {
+		return &s.Enemies[s.SelectedEnemy]
+	}
+	for i := range s.Enemies {
+		if s.Enemies[i].Alive {
+			s.SelectedEnemy = i
+			return &s.Enemies[i]
+		}
+	}
+	return nil
 }
 
 // Damage applies the MVP minimum-one damage rule.

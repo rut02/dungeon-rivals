@@ -281,7 +281,7 @@ func playE2EDungeon(client *e2eClient) error {
 				if err := client.command("room.action", map[string]any{"action": "leave"}); err != nil {
 					return err
 				}
-			case "TREASURE", "EVENT":
+			case "TREASURE", "EVENT", "PUZZLE":
 				if len(private.Activity.Options) == 0 {
 					return fmt.Errorf("%s room has no choices", private.Activity.Type)
 				}

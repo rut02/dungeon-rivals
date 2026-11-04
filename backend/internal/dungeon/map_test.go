@@ -42,6 +42,7 @@ func TestGeneratedMapHasThreeConnectedFloorsAndRoomGuarantee(t *testing.T) {
 			t.Fatalf("floor %d must end with one boss", floor.Number)
 		}
 		hasRestOrTreasure := false
+		hasShortcut := false
 		for depth := 0; depth < lastDepth; depth++ {
 			incoming := map[string]int{}
 			for _, node := range layers[depth] {
@@ -53,8 +54,11 @@ func TestGeneratedMapHasThreeConnectedFloorsAndRoomGuarantee(t *testing.T) {
 					if !ok {
 						t.Fatalf("node %s connects outside its floor", node.ID)
 					}
-					if target.Depth != depth+1 {
-						t.Fatalf("connection skipped depth: %+v -> %+v", node, target)
+					if target.Depth != depth+1 && target.Depth != depth+2 {
+						t.Fatalf("invalid connection depth jump: %+v -> %+v", node, target)
+					}
+					if target.Depth == depth+2 {
+						hasShortcut = true
 					}
 					incoming[targetID]++
 				}
@@ -64,6 +68,9 @@ func TestGeneratedMapHasThreeConnectedFloorsAndRoomGuarantee(t *testing.T) {
 					t.Fatalf("node %s has no incoming edge", node.ID)
 				}
 			}
+		}
+		if !hasShortcut {
+			t.Fatalf("floor %d is missing rush shortcut path", floor.Number)
 		}
 		for _, node := range layers[1:lastDepth] {
 			for _, candidate := range node {
@@ -106,5 +113,33 @@ func TestMoveRequiresAnAvailableConnectedNode(t *testing.T) {
 	}
 	if err := state.Move(targetID); err != ErrEncounterActive {
 		t.Fatalf("double move result = %v, want %v", err, ErrEncounterActive)
+	}
+}
+
+func TestBranchingLocksSiblingNodesAndPreventsDuplicateDepthSelection(t *testing.T) {
+	state, err := Generate(99, testConfig(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	floor := state.currentFloor()
+	startIdx := findNodeIndex(floor, state.CurrentNodeID)
+	conns := floor.Nodes[startIdx].Connections
+	if len(conns) < 2 {
+		t.Fatalf("expected at least 2 connections from start, got %v", conns)
+	}
+	chosenID := conns[0]
+	siblingID := conns[1]
+	if err := state.Move(chosenID); err != nil {
+		t.Fatal(err)
+	}
+	if err := state.ResolveActive(false); err != nil {
+		t.Fatal(err)
+	}
+	siblingIdx := findNodeIndex(floor, siblingID)
+	if floor.Nodes[siblingIdx].Status != Locked {
+		t.Fatalf("unchosen sibling node %s should be LOCKED after clearing %s, got %s", siblingID, chosenID, floor.Nodes[siblingIdx].Status)
+	}
+	if err := state.Move(siblingID); err != ErrNodeUnavailable {
+		t.Fatalf("moving to unchosen sibling node should return ErrNodeUnavailable, got %v", err)
 	}
 }

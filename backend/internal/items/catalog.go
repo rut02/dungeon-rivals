@@ -92,15 +92,18 @@ func (c *Catalog) ValidateStartingItems() error {
 		slot     string
 	}{
 		{"training_sword", Weapon, "weapon"},
+		{"iron_sword", Weapon, "weapon"},
 		{"cloth_armor", Armor, "armor"},
+		{"iron_armor", Armor, "armor"},
 		{"health_potion", Consumable, ""},
 		{"apprentice_staff", Weapon, "weapon"},
-		{"mystic_robe", Armor, "armor"},
 		{"mana_potion", Consumable, ""},
-		{"twin_daggers", Weapon, "weapon"},
-		{"shadow_vest", Armor, "armor"},
+		{"iron_dagger", Weapon, "weapon"},
 		{"hunting_bow", Weapon, "weapon"},
-		{"scout_tunic", Armor, "armor"},
+		{"wooden_shield", Accessory, "accessory"},
+		{"apprentice_ring", Accessory, "accessory"},
+		{"swift_boots", Accessory, "accessory"},
+		{"quiver_charm", Accessory, "accessory"},
 	} {
 		item, ok := c.Get(required.id)
 		if !ok || item.Type != required.itemType || item.Slot != required.slot {

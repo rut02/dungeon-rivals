@@ -65,6 +65,8 @@ type PlayerSnapshot struct {
 	Ready               bool   `json:"ready"`
 	Connected           bool   `json:"connected"`
 	Kit                 string `json:"kit"`
+	IsBot               bool   `json:"is_bot"`
+	BotDifficulty       string `json:"bot_difficulty,omitempty"`
 	Stage               string `json:"stage"`
 	Floor               int    `json:"floor"`
 	Progress            int    `json:"progress"`
@@ -72,10 +74,30 @@ type PlayerSnapshot struct {
 	Completed           bool   `json:"completed"`
 	HP                  int    `json:"hp"`
 	MaxHP               int    `json:"max_hp"`
+	MP                  int    `json:"mp"`
+	MaxMP               int    `json:"max_mp"`
+	ATK                 int    `json:"atk"`
+	DEF                 int    `json:"def"`
+	SPD                 int    `json:"spd"`
+	WeaponSkill         string `json:"weapon_skill,omitempty"`
 	PvPActionsRemaining int    `json:"pvp_actions_remaining"`
 	PvPScore            int    `json:"pvp_score"`
 	PvPDamage           int    `json:"pvp_damage"`
 	PvPKnockouts        int    `json:"pvp_knockouts"`
+	PvPWins             int    `json:"pvp_wins"`
+	PvPLosses           int    `json:"pvp_losses"`
+}
+
+type PvPBoutView struct {
+	BoutNumber   int    `json:"bout_number"`
+	PlayerAID    string `json:"player_a_id"`
+	PlayerAName  string `json:"player_a_name"`
+	PlayerBID    string `json:"player_b_id"`
+	PlayerBName  string `json:"player_b_name"`
+	WinnerID     string `json:"winner_id,omitempty"`
+	WinnerName   string `json:"winner_name,omitempty"`
+	IsTiebreaker bool   `json:"is_tiebreaker,omitempty"`
+	Finished     bool   `json:"finished"`
 }
 
 type Snapshot struct {
@@ -102,19 +124,30 @@ type SelfSnapshot struct {
 	Ready     bool             `json:"ready"`
 	Connected bool             `json:"connected"`
 	Kit       string           `json:"kit"`
+	IsBot     bool             `json:"is_bot,omitempty"`
 	Private   *PrivateSnapshot `json:"private,omitempty"`
 }
 
 type PrivateSnapshot struct {
 	playerstate.PrivateSnapshot
-	Dungeon             *dungeon.PrivateView `json:"dungeon,omitempty"`
-	Combat              *combat.State        `json:"combat,omitempty"`
-	Activity            *RoomActivity        `json:"activity,omitempty"`
-	PvPActionsUsed      int                  `json:"pvp_actions_used,omitempty"`
-	PvPActionsRemaining int                  `json:"pvp_actions_remaining,omitempty"`
-	PvPScore            int                  `json:"pvp_score,omitempty"`
-	PvPDamage           int                  `json:"pvp_damage,omitempty"`
-	PvPKnockouts        int                  `json:"pvp_knockouts,omitempty"`
+	Dungeon              *dungeon.PrivateView `json:"dungeon,omitempty"`
+	Combat               *combat.State        `json:"combat,omitempty"`
+	Activity             *RoomActivity        `json:"activity,omitempty"`
+	LastAcquiredItemID   string               `json:"last_acquired_item_id,omitempty"`
+	LastAcquiredSeq      int                  `json:"last_acquired_seq,omitempty"`
+	PvPActionsUsed       int                  `json:"pvp_actions_used,omitempty"`
+	PvPActionsRemaining  int                  `json:"pvp_actions_remaining,omitempty"`
+	PvPScore             int                  `json:"pvp_score,omitempty"`
+	PvPDamage            int                  `json:"pvp_damage,omitempty"`
+	PvPKnockouts         int                  `json:"pvp_knockouts,omitempty"`
+	PvPWins              int                  `json:"pvp_wins,omitempty"`
+	PvPLosses            int                  `json:"pvp_losses,omitempty"`
+	PvPCurrentOpponentID string               `json:"pvp_current_opponent_id,omitempty"`
+	PvPBoutNumber        int                  `json:"pvp_bout_number,omitempty"`
+	PvPTotalBouts        int                  `json:"pvp_total_bouts,omitempty"`
+	PvPIsTiebreaker      bool                 `json:"pvp_is_tiebreaker,omitempty"`
+	PvPLog               []string             `json:"pvp_log,omitempty"`
+	PvPBouts             []PvPBoutView        `json:"pvp_bouts,omitempty"`
 }
 
 type ResultEntry struct {
@@ -143,27 +176,52 @@ type ScoreEvent struct {
 }
 
 type player struct {
-	ID, Name, Token   string
-	Ready, Connected  bool
-	Kit               string
-	Conn              interface{ WriteJSON(any) error }
-	RequestIDs        map[string]struct{}
-	RequestOrder      []string
-	State             *playerstate.State
-	Dungeon           *dungeon.State
-	Combat            *combat.State
-	Activity          *RoomActivity
-	PvPActionsUsed    int
-	PvPScore          int
-	PvPScoreRemainder int
-	PvPDamage         int
-	PvPKnockouts      int
-	PvPDeaths         int
-	PvPPenalty        int
-	PvPBonus          int
-	PvPGuarding       bool
-	PveScore          int
-	BossesDefeated    int
+	ID, Name, Token    string
+	Ready, Connected   bool
+	Kit                string
+	IsBot              bool
+	BotDifficulty      string
+	Conn               interface{ WriteJSON(any) error }
+	RequestIDs         map[string]struct{}
+	RequestOrder       []string
+	State              *playerstate.State
+	Dungeon            *dungeon.State
+	Combat             *combat.State
+	Activity           *RoomActivity
+	LastAcquiredItemID string
+	LastAcquiredSeq    int
+	PvPActionsUsed     int
+	PvPScore           int
+	PvPScoreRemainder  int
+	PvPDamage          int
+	PvPKnockouts       int
+	PvPDeaths          int
+	PvPPenalty         int
+	PvPBonus           int
+	PvPGuarding        bool
+	PvPSmoke           bool
+	PvPWins            int
+	PvPLosses          int
+	PveScore           int
+	BossesDefeated     int
+}
+
+func (p *player) recordAcquiredItem(itemID string) {
+	if itemID == "" {
+		return
+	}
+	p.LastAcquiredItemID = itemID
+	p.LastAcquiredSeq++
+}
+
+type PvPBout struct {
+	BoutNumber   int
+	PlayerAID    string
+	PlayerBID    string
+	WinnerID     string
+	Turns        int
+	IsTiebreaker bool
+	Finished     bool
 }
 
 type room struct {
@@ -173,6 +231,10 @@ type room struct {
 	ScoreEventIDs       map[string]struct{}
 	Results             []ResultEntry
 	ScoreEvents         []ScoreEvent
+	PvPBouts            []PvPBout
+	CurrentBoutIdx      int
+	TiebreakerPlayed    bool
+	PvPLog              []string
 }
 
 type Manager struct {
@@ -370,6 +432,9 @@ func (m *Manager) Start(r *room, playerID string) error {
 		if err != nil {
 			return err
 		}
+		if p.IsBot {
+			applyBotDifficulty(state, p.BotDifficulty, m.catalog)
+		}
 		seed, err := randomSeed()
 		if err != nil {
 			return err
@@ -421,17 +486,38 @@ func (m *Manager) disconnect(r *room, playerID string, conn interface{ WriteJSON
 		if r.Phase == "lobby" {
 			p.Ready = false
 		}
-		if leave && r.Phase == "lobby" {
+		if leave {
 			r.Players = append(r.Players[:i], r.Players[i+1:]...)
-			if len(r.Players) == 0 {
+			humanCount := 0
+			for _, remaining := range r.Players {
+				if !remaining.IsBot {
+					humanCount++
+				}
+			}
+			if humanCount == 0 {
 				delete(m.rooms, r.Code)
 				return
 			}
 			if r.HostID == playerID {
-				r.HostID = r.Players[0].ID
+				for _, remaining := range r.Players {
+					if !remaining.IsBot {
+						r.HostID = remaining.ID
+						break
+					}
+				}
 			}
-			for _, remaining := range r.Players {
-				remaining.Ready = false
+			if r.Phase == "lobby" {
+				for _, remaining := range r.Players {
+					if !remaining.IsBot {
+						remaining.Ready = false
+					}
+				}
+			} else if r.Phase == "dungeon" || r.Phase == "preparation" {
+				m.maybePreparation(r)
+			} else if r.Phase == "pvp" {
+				if m.allPvPActionsUsed(r) {
+					m.finishPvPLocked(r)
+				}
 			}
 		}
 		r.Version++
@@ -453,12 +539,36 @@ func (m *Manager) snapshotLocked(r *room, meID string) Snapshot {
 			stats := p.State.Stats(m.catalog)
 			view.HP = stats.HP
 			view.MaxHP = stats.MaxHP
+			view.MP = stats.MP
+			view.MaxMP = stats.MaxMP
+			view.ATK = stats.ATK
+			view.DEF = stats.DEF
+			view.SPD = stats.SPD
+			view.WeaponSkill = stats.WeaponSkill
 		}
 		players = append(players, view)
 		if p.ID == meID {
-			me = SelfSnapshot{PlayerID: p.ID, Name: p.Name, Ready: p.Ready, Connected: p.Connected, Kit: p.Kit, IsHost: p.ID == r.HostID}
+			me = SelfSnapshot{PlayerID: p.ID, Name: p.Name, Ready: p.Ready, Connected: p.Connected, Kit: p.Kit, IsBot: p.IsBot, IsHost: p.ID == r.HostID}
 			if p.State != nil {
-				private := PrivateSnapshot{PrivateSnapshot: p.State.Snapshot(m.catalog), PvPActionsUsed: p.PvPActionsUsed, PvPActionsRemaining: max(0, 5-p.PvPActionsUsed), PvPScore: p.PvPScore, PvPDamage: p.PvPDamage, PvPKnockouts: p.PvPKnockouts}
+				oppID, boutNum, totalBouts, isTie := m.pvpStatusForPlayer(r, p.ID)
+				private := PrivateSnapshot{
+					PrivateSnapshot:      p.State.Snapshot(m.catalog),
+					LastAcquiredItemID:   p.LastAcquiredItemID,
+					LastAcquiredSeq:      p.LastAcquiredSeq,
+					PvPActionsUsed:       p.PvPActionsUsed,
+					PvPActionsRemaining:  99,
+					PvPScore:             p.PvPScore,
+					PvPDamage:            p.PvPDamage,
+					PvPKnockouts:         p.PvPKnockouts,
+					PvPWins:              p.PvPWins,
+					PvPLosses:            p.PvPLosses,
+					PvPCurrentOpponentID: oppID,
+					PvPBoutNumber:        boutNum,
+					PvPTotalBouts:        totalBouts,
+					PvPIsTiebreaker:      isTie,
+					PvPLog:               append([]string(nil), r.PvPLog...),
+					PvPBouts:             m.pvpBoutViews(r),
+				}
 				if p.Dungeon != nil {
 					view := p.Dungeon.PrivateSnapshot()
 					private.Dungeon = &view
@@ -499,7 +609,7 @@ func (m *Manager) broadcastLocked(r *room, event string, payload any) {
 }
 
 func snapshotPlayer(p *player, host bool) PlayerSnapshot {
-	view := PlayerSnapshot{PlayerID: p.ID, Name: p.Name, IsHost: host, Ready: p.Ready, Connected: p.Connected, Kit: p.Kit, Stage: "lobby"}
+	view := PlayerSnapshot{PlayerID: p.ID, Name: p.Name, IsHost: host, Ready: p.Ready, Connected: p.Connected, Kit: p.Kit, IsBot: p.IsBot, BotDifficulty: p.BotDifficulty, Stage: "lobby"}
 	if p.Dungeon != nil {
 		view.Stage = "exploring"
 		view.Completed = p.Dungeon.Completed
@@ -513,10 +623,12 @@ func snapshotPlayer(p *player, host bool) PlayerSnapshot {
 		view.Score = p.State.Score
 		view.HP = p.State.HP
 	}
-	view.PvPActionsRemaining = max(0, 5-p.PvPActionsUsed)
+	view.PvPActionsRemaining = 99
 	view.PvPScore = p.PvPScore
 	view.PvPDamage = p.PvPDamage
 	view.PvPKnockouts = p.PvPKnockouts
+	view.PvPWins = p.PvPWins
+	view.PvPLosses = p.PvPLosses
 	if !p.Connected {
 		view.Stage = "disconnected"
 	}
@@ -537,6 +649,16 @@ func (m *Manager) ServeCommand(r *room, playerID string, conn interface{ WriteJS
 			return errors.New("INVALID_REQUEST")
 		}
 		return m.selectKit(r, playerID, kit)
+	case "lobby.add_bot":
+		diff, _ := payload["difficulty"].(string)
+		kit, _ := payload["kit"].(string)
+		return m.addBot(r, playerID, diff, kit)
+	case "lobby.remove_bot":
+		botID, ok := payload["bot_player_id"].(string)
+		if !ok {
+			return errors.New("INVALID_REQUEST")
+		}
+		return m.removeBot(r, playerID, botID)
 	case "game.start":
 		return m.Start(r, playerID)
 	case "room.leave":
@@ -608,8 +730,10 @@ func (m *Manager) ServeCommand(r *room, playerID string, conn interface{ WriteJS
 	case "combat.dismiss":
 		return m.dismissCombat(r, playerID)
 	case "combat.select_target":
-		targetEnemy := 0
+		targetEnemy := -1
 		if val, ok := payload["target_enemy"].(float64); ok {
+			targetEnemy = int(val)
+		} else if val, ok := payload["target"].(float64); ok {
 			targetEnemy = int(val)
 		}
 		return m.selectCombatTarget(r, playerID, targetEnemy)
@@ -619,8 +743,10 @@ func (m *Manager) ServeCommand(r *room, playerID string, conn interface{ WriteJS
 			return errors.New("INVALID_REQUEST")
 		}
 		itemID, _ := payload["item_id"].(string)
-		targetEnemy := 0
+		targetEnemy := -1
 		if val, ok := payload["target_enemy"].(float64); ok {
+			targetEnemy = int(val)
+		} else if val, ok := payload["target"].(float64); ok {
 			targetEnemy = int(val)
 		}
 		skillID, _ := payload["skill_id"].(string)
@@ -650,6 +776,7 @@ func (m *Manager) dismissCombat(r *room, playerID string) error {
 	}
 	if p.Combat != nil && p.Combat.Finished {
 		p.Combat = nil
+		m.simulateBotsProgress(r)
 		r.Version++
 		m.broadcastSnapshotsLocked(r)
 	}
@@ -688,12 +815,18 @@ func (m *Manager) restartLobby(r *room, playerID string) error {
 	r.Results = nil
 	r.ScoreEvents = nil
 	r.ScoreEventIDs = make(map[string]struct{})
+	r.PvPBouts = nil
+	r.CurrentBoutIdx = 0
+	r.TiebreakerPlayed = false
+	r.PvPLog = nil
 	for _, p := range r.Players {
 		p.Ready = false
 		p.State = nil
 		p.Dungeon = nil
 		p.Combat = nil
 		p.Activity = nil
+		p.LastAcquiredItemID = ""
+		p.LastAcquiredSeq = 0
 		p.PvPActionsUsed = 0
 		p.PvPScore = 0
 		p.PvPDamage = 0
@@ -702,6 +835,9 @@ func (m *Manager) restartLobby(r *room, playerID string) error {
 		p.PvPPenalty = 0
 		p.PvPBonus = 0
 		p.PvPGuarding = false
+		p.PvPSmoke = false
+		p.PvPWins = 0
+		p.PvPLosses = 0
 		p.PveScore = 0
 		p.BossesDefeated = 0
 	}
@@ -762,6 +898,7 @@ func (m *Manager) moveDungeon(r *room, playerID, nodeID string) error {
 	} else {
 		p.Combat = nil
 	}
+	m.simulateBotsProgress(r)
 	r.Version++
 	m.broadcastSnapshotsLocked(r)
 	return nil
@@ -826,7 +963,7 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			}
 		}
 	}
-	if target != nil && enc.HP > 0 && target.HP > enc.HP {
+	if len(enc.Enemies) == 1 && target != nil && enc.HP > 0 && target.HP > enc.HP {
 		target.HP = enc.HP
 	}
 
@@ -850,20 +987,21 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		}
 	}
 
+	playerFirst := target == nil || stats.SPD >= target.Speed
+
 	switch action {
 	case "ATTACK":
 		if target == nil {
 			finish = true
 			break
 		}
-		playerFirst := stats.SPD >= target.Speed
 		dealDamage := func() {
 			dmg := combat.Damage(stats.ATK, target.Defense)
 			if stats.Archetype == "daggers" && rng.Intn(100) < 30 {
 				dmg = int(float64(dmg) * 1.8)
 				enc.Log = append(enc.Log, "💥 CRITICAL STRIKE!")
 			} else if stats.Archetype == "staff" {
-				dmg = combat.Damage(stats.ATK, int(float64(target.Defense)*0.6))
+				dmg = combat.Damage(stats.ATK, int(float64(target.Defense)*0.5))
 			}
 			target.HP = max(0, target.HP-dmg)
 			enc.Log = append(enc.Log, fmt.Sprintf("You dealt %d damage to %s.", dmg, target.Name))
@@ -883,6 +1021,8 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			if p.State.HP == 0 {
 				died = true
 				finish = true
+			} else if enc.AliveCount() == 0 {
+				finish = true
 			} else {
 				dealDamage()
 				if enc.AliveCount() == 0 {
@@ -892,6 +1032,9 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		}
 
 	case "SKILL":
+		if enc.SkillCooldown > 0 {
+			return errors.New("SKILL_ON_COOLDOWN")
+		}
 		cost := stats.WeaponSkillCost
 		if cost <= 0 {
 			cost = 4
@@ -899,34 +1042,68 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		if !p.State.ConsumeMP(cost) {
 			return playerstate.ErrNotEnoughMP
 		}
-		enc.Log = append(enc.Log, fmt.Sprintf("⚡ You used %s! (-%d MP)", stats.WeaponSkill, cost))
-		if stats.WeaponSkillTarget == "aoe" {
-			for i := range enc.Enemies {
-				e := &enc.Enemies[i]
-				if !e.Alive {
-					continue
+		enc.SkillCooldown = 3 // 2 turns cooldown after turn ends
+		castSkill := func() {
+			enc.Log = append(enc.Log, fmt.Sprintf("⚡ You used %s! (-%d MP)", stats.WeaponSkill, cost))
+			if stats.WeaponSkillTarget == "aoe" {
+				for i := range enc.Enemies {
+					e := &enc.Enemies[i]
+					if !e.Alive {
+						continue
+					}
+					def := int(float64(e.Defense) * 0.7)
+					if stats.Archetype == "staff" {
+						def = int(float64(e.Defense) * 0.4)
+					}
+					dmg := combat.Damage(int(float64(stats.ATK)*1.20), def)
+					e.HP = max(0, e.HP-dmg)
+					enc.Log = append(enc.Log, fmt.Sprintf("Hit %s for %d damage.", e.Name, dmg))
+					if e.HP == 0 {
+						e.Alive = false
+						enc.Log = append(enc.Log, e.Name+" was defeated!")
+					}
 				}
-				dmg := combat.Damage(int(float64(stats.ATK)*1.25), e.Defense)
-				e.HP = max(0, e.HP-dmg)
-				enc.Log = append(enc.Log, fmt.Sprintf("Hit %s for %d damage.", e.Name, dmg))
-				if e.HP == 0 {
-					e.Alive = false
-					enc.Log = append(enc.Log, e.Name+" was defeated!")
-				}
-			}
-		} else {
-			if target != nil {
-				dmg := combat.Damage(int(float64(stats.ATK)*1.6)+stats.DEF, target.Defense)
-				target.HP = max(0, target.HP-dmg)
-				enc.Log = append(enc.Log, fmt.Sprintf("Dealt %d devastating damage to %s!", dmg, target.Name))
-				if target.HP == 0 {
-					target.Alive = false
-					enc.Log = append(enc.Log, target.Name+" was defeated!")
+			} else {
+				if target != nil && target.Alive {
+					var dmg int
+					switch stats.Archetype {
+					case "sword":
+						dmg = combat.Damage(int(float64(stats.ATK)*1.35)+stats.DEF, target.Defense)
+					case "daggers":
+						dmg = combat.Damage(int(float64(stats.ATK)*1.65), target.Defense)
+					case "bow", "staff":
+						dmg = combat.Damage(int(float64(stats.ATK)*1.45), target.Defense/2)
+					default:
+						dmg = combat.Damage(int(float64(stats.ATK)*1.40)+stats.DEF, target.Defense)
+					}
+					target.HP = max(0, target.HP-dmg)
+					enc.Log = append(enc.Log, fmt.Sprintf("Dealt %d devastating damage to %s!", dmg, target.Name))
+					if target.HP == 0 {
+						target.Alive = false
+						enc.Log = append(enc.Log, target.Name+" was defeated!")
+					}
 				}
 			}
 		}
-		if enc.AliveCount() == 0 {
-			finish = true
+
+		if playerFirst {
+			castSkill()
+			if enc.AliveCount() == 0 {
+				finish = true
+			}
+		} else {
+			m.enemiesAttack(p, enc, stats, rng)
+			if p.State.HP == 0 {
+				died = true
+				finish = true
+			} else if enc.AliveCount() == 0 {
+				finish = true
+			} else {
+				castSkill()
+				if enc.AliveCount() == 0 {
+					finish = true
+				}
+			}
 		}
 
 	case "DEFEND":
@@ -994,19 +1171,22 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		return combat.ErrInvalidAction
 	}
 
-	// Counter-attack if enemies are alive and player did not act second
-	if !finish && !died && action != "ATTACK" {
+	// Counter-attack if enemies are alive and player did not already take enemy attacks first
+	if !finish && !died && (action != "ATTACK" && action != "SKILL") {
 		m.enemiesAttack(p, enc, stats, rng)
 		if p.State.HP == 0 {
 			died = true
 			finish = true
+		} else if enc.AliveCount() == 0 {
+			finish = true
 		}
-	} else if !finish && !died && action == "ATTACK" {
-		playerFirst := target != nil && stats.SPD >= target.Speed
+	} else if !finish && !died && (action == "ATTACK" || action == "SKILL") {
 		if playerFirst {
 			m.enemiesAttack(p, enc, stats, rng)
 			if p.State.HP == 0 {
 				died = true
+				finish = true
+			} else if enc.AliveCount() == 0 {
 				finish = true
 			}
 		}
@@ -1019,6 +1199,9 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 	}
 
 	if !finish {
+		if enc.SkillCooldown > 0 {
+			enc.SkillCooldown--
+		}
 		p.State.RestoreMP(3, m.catalog)
 		enc.Guarding = false
 		enc.Turn++
@@ -1027,9 +1210,9 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			if !e.Alive {
 				continue
 			}
-			if enc.Turn%3 == 0 {
+			if (enc.Turn+i)%3 == 0 {
 				e.Intent = "HEAVY"
-				e.IntentValue = int(float64(e.Attack) * 1.8)
+				e.IntentValue = max(e.Attack+2, int(float64(e.Attack)*1.35))
 			} else {
 				e.Intent = "ATTACK"
 				e.IntentValue = e.Attack
@@ -1043,7 +1226,17 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			enc.Victory = true
 			_ = p.Dungeon.ResolveActive(skipped)
 			if !skipped {
-				reward := rng.Intn(max(1, monsterDef.GoldMax-monsterDef.GoldMin+1)) + monsterDef.GoldMin
+				reward := 0
+				for _, e := range enc.Enemies {
+					mDef := m.monsterByID(e.MonsterID)
+					if mDef.ID == "" {
+						mDef = monsterDef
+					}
+					reward += rng.Intn(max(1, mDef.GoldMax-mDef.GoldMin+1)) + mDef.GoldMin
+				}
+				if reward == 0 {
+					reward = rng.Intn(max(1, monsterDef.GoldMax-monsterDef.GoldMin+1)) + monsterDef.GoldMin
+				}
 				p.State.Gold += reward
 				source := "monster_kill"
 				if monsterDef.Tier == "elite" {
@@ -1052,12 +1245,16 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 				if monsterDef.Tier == "boss" {
 					source = "boss_kill"
 				}
-				if m.recordScoreEvent(r, ScoreEvent{ID: "pve:monster:" + p.ID + ":" + p.Dungeon.CheckpointNodeID, PlayerID: p.ID, Category: "pve", Source: source, Points: monsterDef.ScoreReward}) {
-					p.State.Score += monsterDef.ScoreReward
+				scoreReward := monsterDef.ScoreReward
+				if len(enc.Enemies) > 1 {
+					scoreReward += (len(enc.Enemies) - 1) * 5
 				}
-				expReward := monsterDef.ScoreReward * 2
+				if m.recordScoreEvent(r, ScoreEvent{ID: "pve:monster:" + p.ID + ":" + p.Dungeon.CurrentNodeID, PlayerID: p.ID, Category: "pve", Source: source, Points: scoreReward}) {
+					p.State.Score += scoreReward
+				}
+				expReward := scoreReward * 2
 				leveled := p.State.GainEXP(expReward, m.catalog)
-				enc.Log = append(enc.Log, fmt.Sprintf("🎉 Victory! +%d Gold, +%d Score, +%d EXP.", reward, monsterDef.ScoreReward, expReward))
+				enc.Log = append(enc.Log, fmt.Sprintf("🎉 Victory! +%d Gold, +%d Score, +%d EXP.", reward, scoreReward, expReward))
 				if leveled {
 					enc.Log = append(enc.Log, fmt.Sprintf("🌟 LEVEL UP! You reached Level %d! All stats increased!", p.State.Level))
 				}
@@ -1108,9 +1305,13 @@ func (m *Manager) enemiesAttack(p *player, enc *combat.State, stats playerstate.
 				enc.Log = append(enc.Log, "💨 Shadow Dodge! You completely evaded the attack!")
 			} else if stats.Archetype == "sword" {
 				dmg = max(1, int(float64(dmg)*0.3))
-				reflect := max(1, dmg)
+				reflect := max(2, stats.DEF)
 				e.HP = max(0, e.HP-reflect)
 				enc.Log = append(enc.Log, fmt.Sprintf("🛡️ Shield Block! Reduced damage to %d and reflected %d to %s!", dmg, reflect, e.Name))
+				if e.HP == 0 {
+					e.Alive = false
+					enc.Log = append(enc.Log, fmt.Sprintf("💥 %s was defeated by your shield reflection!", e.Name))
+				}
 			} else if stats.Archetype == "staff" {
 				dmg = max(1, int(float64(dmg)*0.4))
 				enc.Log = append(enc.Log, fmt.Sprintf("✨ Mana Barrier absorbed the hit! Took only %d damage.", dmg))
@@ -1131,8 +1332,18 @@ func (m *Manager) enemiesAttack(p *player, enc *combat.State, stats playerstate.
 
 func (m *Manager) maybePreparation(r *room) {
 	for _, player := range r.Players {
-		if player.Dungeon == nil || !player.Dungeon.Completed {
-			return
+		if !player.IsBot {
+			if player.Dungeon == nil || !player.Dungeon.Completed {
+				return
+			}
+		}
+	}
+	for _, player := range r.Players {
+		if player.IsBot {
+			if player.Dungeon != nil {
+				player.Dungeon.Completed = true
+			}
+			player.Ready = true
 		}
 	}
 	r.Phase = "preparation"
@@ -1189,8 +1400,12 @@ func (m *Manager) startPvPLocked(r *room) {
 		player.Ready = false
 		player.PvPActionsUsed = 0
 		player.PvPGuarding = false
+		player.PvPSmoke = false
+		player.PvPWins = 0
+		player.PvPLosses = 0
 	}
 	r.Phase = "pvp"
+	m.initPvPTournamentLocked(r)
 	r.Version++
 	m.broadcastLocked(r, "game.phase_changed", map[string]any{"phase": r.Phase})
 	m.broadcastSnapshotsLocked(r)
@@ -1233,19 +1448,39 @@ func (m *Manager) pveRespawn(p *player, rng *mathrand.Rand) {
 func playerstateRemoveOne(s *playerstate.State, id string) error { return s.Remove(id, 1) }
 
 func (m *Manager) tryMonsterLoot(p *player, monster combat.Monster, rng *mathrand.Rand) {
-	if rng.Intn(100) >= 40 {
+	chance := 55
+	if monster.Tier == "elite" {
+		chance = 100
+	} else if monster.Tier == "boss" {
+		chance = 100
+	}
+	if rng.Intn(100) >= chance {
 		return
 	}
 	pool := []string{
-		"health_potion", "greater_health_potion", "mana_potion",
-		"iron_sword", "crystal_wand", "shadowfang", "elven_recurve",
-		"chainmail_hauberk", "boots_of_haste", "thiefs_coin", "fire_bomb",
+		"health_potion", "greater_health_potion", "mana_potion", "greater_mana_potion",
+		"iron_sword", "knights_claymore", "wooden_staff", "crystal_wand",
+		"assassins_twinblades", "shadowfang", "elven_recurve", "windrunner_bow",
+		"chainmail_hauberk", "iron_helm", "shadow_cowl", "iron_shield",
+		"boots_of_haste", "thiefs_coin", "blood_chalice", "fire_bomb", "smoke_bomb",
+	}
+	if monster.Tier == "boss" {
+		pool = []string{
+			"flamebrand", "excalibur", "archmage_staff", "void_scepter",
+			"shadowfang", "grim_scythe", "windrunner_bow", "dragons_breath_bow",
+			"dragonscale_armor", "crown_of_kings", "aegis_shield", "blood_chalice",
+		}
 	}
 	id := pool[rng.Intn(len(pool))]
 	if err := p.State.Add(id, 1, m.catalog); err == nil {
-		p.Combat.Log = append(p.Combat.Log, "Found "+id+".")
+		p.Combat.LootItemID = id
+		p.recordAcquiredItem(id)
+		if def, ok := m.catalog.Get(id); ok {
+			p.Combat.Log = append(p.Combat.Log, "🎁 Loot dropped: "+def.Name+"!")
+		} else {
+			p.Combat.Log = append(p.Combat.Log, "Found "+id+".")
+		}
 	}
-	_ = monster
 }
 
 func (m *Manager) leave(r *room, playerID string, conn interface{ WriteJSON(any) error }) error {
@@ -1254,26 +1489,44 @@ func (m *Manager) leave(r *room, playerID string, conn interface{ WriteJSON(any)
 	if r == nil || m.rooms[r.Code] != r {
 		return ErrRoomNotFound
 	}
-	if r.Phase != "lobby" {
-		return ErrInvalidPhase
-	}
 	for index, p := range r.Players {
 		if p.ID != playerID {
 			continue
 		}
-		if p.Conn != conn {
+		if conn != nil && p.Conn != conn {
 			return ErrPlayerNotFound
 		}
 		r.Players = append(r.Players[:index], r.Players[index+1:]...)
-		if len(r.Players) == 0 {
+		humanCount := 0
+		for _, remaining := range r.Players {
+			if !remaining.IsBot {
+				humanCount++
+			}
+		}
+		if humanCount == 0 {
 			delete(m.rooms, r.Code)
 			return nil
 		}
 		if r.HostID == playerID {
-			r.HostID = r.Players[0].ID
+			for _, remaining := range r.Players {
+				if !remaining.IsBot {
+					r.HostID = remaining.ID
+					break
+				}
+			}
 		}
-		for _, remaining := range r.Players {
-			remaining.Ready = false
+		if r.Phase == "lobby" {
+			for _, remaining := range r.Players {
+				if !remaining.IsBot {
+					remaining.Ready = false
+				}
+			}
+		} else if r.Phase == "dungeon" || r.Phase == "preparation" {
+			m.maybePreparation(r)
+		} else if r.Phase == "pvp" {
+			if m.allPvPActionsUsed(r) {
+				m.finishPvPLocked(r)
+			}
 		}
 		r.Version++
 		m.broadcastLocked(r, "room.player_left", map[string]any{"player_id": playerID})
@@ -1386,4 +1639,166 @@ func randomSeed() (uint64, error) {
 		return 0, err
 	}
 	return binary.LittleEndian.Uint64(bytes[:]), nil
+}
+
+func (m *Manager) addBot(r *room, playerID, difficulty, kit string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r == nil || m.rooms[r.Code] != r {
+		return ErrRoomNotFound
+	}
+	if r.Phase != "lobby" {
+		return ErrInvalidPhase
+	}
+	if r.HostID != playerID {
+		return ErrNotHost
+	}
+	if len(r.Players) >= m.maxPlayers {
+		return ErrRoomFull
+	}
+	if difficulty == "" {
+		difficulty = "normal"
+	}
+	diffLabels := map[string]string{
+		"easy":      "ง่าย",
+		"normal":    "ปานกลาง",
+		"hard":      "ยาก",
+		"nightmare": "มหาโหด",
+	}
+	diffLabel, ok := diffLabels[difficulty]
+	if !ok {
+		difficulty = "normal"
+		diffLabel = "ปานกลาง"
+	}
+	validKits := []string{"knight", "mage", "rogue", "ranger"}
+	if kit == "" || kit == "random" {
+		kit = validKits[mathrand.Intn(len(validKits))]
+	}
+	botNames := map[string][]string{
+		"knight": {"เซอร์โรแลนด์", "กาเร็ธโล่เหล็ก", "เบอริคอัศวิน"},
+		"mage":   {"จอมเวทไลรา", "อิกนิสเพลิงผลาญ", "เซฟีร์มนตรา"},
+		"rogue":  {"ชาโดว์เวน", "ไคเอลมีดว่องไว", "นิกซ์เงามืด"},
+		"ranger": {"โรบินเหยี่ยวเวหา", "เฟย์ธนูทิพย์", "ไซลัสศรทะลวง"},
+	}
+	nameOptions := botNames[kit]
+	pickedName := "บอทนักผจญภัย"
+	if len(nameOptions) > 0 {
+		pickedName = nameOptions[mathrand.Intn(len(nameOptions))]
+	}
+	botDisplayName := fmt.Sprintf("🤖 %s (%s)", pickedName, diffLabel)
+
+	p, err := newPlayer(botDisplayName)
+	if err != nil {
+		return err
+	}
+	p.IsBot = true
+	p.BotDifficulty = difficulty
+	p.Kit = kit
+	p.Connected = true
+	p.Ready = true
+
+	r.Players = append(r.Players, p)
+	r.Version++
+	m.broadcastLocked(r, "room.player_joined", map[string]any{"player_id": p.ID, "name": p.Name})
+	m.broadcastSnapshotsLocked(r)
+	return nil
+}
+
+func (m *Manager) removeBot(r *room, playerID, botID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r == nil || m.rooms[r.Code] != r {
+		return ErrRoomNotFound
+	}
+	if r.Phase != "lobby" {
+		return ErrInvalidPhase
+	}
+	if r.HostID != playerID {
+		return ErrNotHost
+	}
+	for i, p := range r.Players {
+		if p.ID == botID && p.IsBot {
+			r.Players = append(r.Players[:i], r.Players[i+1:]...)
+			r.Version++
+			m.broadcastLocked(r, "room.player_left", map[string]any{"player_id": botID})
+			m.broadcastSnapshotsLocked(r)
+			return nil
+		}
+	}
+	return ErrPlayerNotFound
+}
+
+func applyBotDifficulty(state *playerstate.State, difficulty string, catalog *items.Catalog) {
+	if state == nil {
+		return
+	}
+	switch difficulty {
+	case "easy":
+		state.MaxHP = 75
+		state.HP = 75
+		state.BaseATK = max(5, state.BaseATK-2)
+		state.BaseDEF = max(1, state.BaseDEF-1)
+		state.BaseSPD = max(6, state.BaseSPD-2)
+	case "normal":
+		// default kit stats
+	case "hard":
+		state.MaxHP += 35
+		state.HP += 35
+		state.BaseATK += 3
+		state.BaseDEF += 2
+		state.BaseSPD += 3
+		state.Gold += 60
+		_ = state.Add("greater_health_potion", 1, catalog)
+	case "nightmare":
+		state.MaxHP += 70
+		state.HP += 70
+		state.BaseATK += 6
+		state.BaseDEF += 4
+		state.BaseSPD += 5
+		state.Gold += 150
+		_ = state.Add("greater_health_potion", 2, catalog)
+		_ = state.Add("greater_mana_potion", 1, catalog)
+	}
+}
+
+func (m *Manager) simulateBotsProgress(r *room) {
+	allHumansCompleted := true
+	for _, p := range r.Players {
+		if !p.IsBot {
+			if p.Dungeon == nil || !p.Dungeon.Completed {
+				allHumansCompleted = false
+				break
+			}
+		}
+	}
+
+	for _, bot := range r.Players {
+		if !bot.IsBot || bot.Dungeon == nil || bot.Dungeon.Completed {
+			continue
+		}
+
+		if allHumansCompleted {
+			bot.Dungeon.Completed = true
+			bot.BossesDefeated = max(bot.BossesDefeated, 3)
+			bot.State.Score += 80
+			bot.Ready = true
+			continue
+		}
+
+		bot.Dungeon.Progress = min(6, bot.Dungeon.Progress+1)
+		bot.State.Score += 10
+		bot.State.Gold += 10
+		if bot.Dungeon.Progress >= 6 {
+			completed, err := bot.Dungeon.AdvanceFloor()
+			if err == nil {
+				bot.BossesDefeated++
+				bot.State.Score += 20
+				if completed {
+					bot.Dungeon.Completed = true
+					bot.State.Score += 40
+					bot.Ready = true
+				}
+			}
+		}
+	}
 }

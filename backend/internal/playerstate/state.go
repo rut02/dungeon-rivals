@@ -103,84 +103,93 @@ func NewDefault(catalog *items.Catalog) (*State, error) {
 }
 
 // NewWithKit creates player state customized for the chosen starting loadout.
+// Starting loadout consists strictly of the starting weapon + 1x Health Potion + 1x Mana Potion.
+// All armors, shields, and accessories must be discovered and farmed in the dungeon.
 func NewWithKit(catalog *items.Catalog, kit string) (*State, error) {
 	if kit == "" {
 		kit = "knight"
 	}
+	var s *State
 	switch kit {
 	case "mage":
-		return &State{
-			HP:        85,
-			MaxHP:     85,
-			MP:        40,
-			MaxMP:     40,
+		s = &State{
+			HP:        90,
+			MaxHP:     90,
+			MP:        35,
+			MaxMP:     35,
 			Level:     1,
 			EXP:       0,
 			MaxEXP:    30,
 			BaseATK:   10,
-			BaseDEF:   0,
-			BaseSPD:   5,
-			Gold:      20,
+			BaseDEF:   2,
+			BaseSPD:   6,
+			Gold:      25,
 			Score:     0,
 			Kit:       "mage",
-			Inventory: []Stack{{ItemID: "mana_potion", Quantity: 2}, {ItemID: "health_potion", Quantity: 1}},
-			Equipment: Equipment{Weapon: "apprentice_staff", Armor: "mystic_robe"},
-		}, nil
+			Inventory: []Stack{{ItemID: "health_potion", Quantity: 1}, {ItemID: "mana_potion", Quantity: 1}},
+			Equipment: Equipment{Weapon: "apprentice_staff", Armor: "", Accessories: [2]string{"", ""}},
+		}
 	case "rogue":
-		return &State{
-			HP:        95,
-			MaxHP:     95,
-			MP:        25,
-			MaxMP:     25,
-			Level:     1,
-			EXP:       0,
-			MaxEXP:    30,
-			BaseATK:   8,
-			BaseDEF:   1,
-			BaseSPD:   9,
-			Gold:      20,
-			Score:     0,
-			Kit:       "rogue",
-			Inventory: []Stack{{ItemID: "health_potion", Quantity: 2}, {ItemID: "smoke_bomb", Quantity: 1}},
-			Equipment: Equipment{Weapon: "twin_daggers", Armor: "shadow_vest"},
-		}, nil
-	case "ranger":
-		return &State{
+		s = &State{
 			HP:        100,
 			MaxHP:     100,
-			MP:        25,
-			MaxMP:     25,
+			MP:        30,
+			MaxMP:     30,
 			Level:     1,
 			EXP:       0,
 			MaxEXP:    30,
 			BaseATK:   8,
 			BaseDEF:   2,
-			BaseSPD:   7,
-			Gold:      20,
+			BaseSPD:   9,
+			Gold:      25,
 			Score:     0,
-			Kit:       "ranger",
-			Inventory: []Stack{{ItemID: "health_potion", Quantity: 2}, {ItemID: "mana_potion", Quantity: 1}},
-			Equipment: Equipment{Weapon: "hunting_bow", Armor: "scout_tunic"},
-		}, nil
-	default: // knight / warrior
-		return &State{
-			HP:        120,
-			MaxHP:     120,
-			MP:        20,
-			MaxMP:     20,
+			Kit:       "rogue",
+			Inventory: []Stack{{ItemID: "health_potion", Quantity: 1}, {ItemID: "mana_potion", Quantity: 1}},
+			Equipment: Equipment{Weapon: "iron_dagger", Armor: "", Accessories: [2]string{"", ""}},
+		}
+	case "ranger":
+		s = &State{
+			HP:        100,
+			MaxHP:     100,
+			MP:        30,
+			MaxMP:     30,
 			Level:     1,
 			EXP:       0,
 			MaxEXP:    30,
-			BaseATK:   7,
-			BaseDEF:   3,
-			BaseSPD:   3,
-			Gold:      20,
+			BaseATK:   8,
+			BaseDEF:   2,
+			BaseSPD:   8,
+			Gold:      25,
+			Score:     0,
+			Kit:       "ranger",
+			Inventory: []Stack{{ItemID: "health_potion", Quantity: 1}, {ItemID: "mana_potion", Quantity: 1}},
+			Equipment: Equipment{Weapon: "hunting_bow", Armor: "", Accessories: [2]string{"", ""}},
+		}
+	default: // knight / warrior
+		s = &State{
+			HP:        110,
+			MaxHP:     110,
+			MP:        25,
+			MaxMP:     25,
+			Level:     1,
+			EXP:       0,
+			MaxEXP:    30,
+			BaseATK:   8,
+			BaseDEF:   4,
+			BaseSPD:   6,
+			Gold:      25,
 			Score:     0,
 			Kit:       "knight",
-			Inventory: []Stack{{ItemID: "health_potion", Quantity: 2}},
-			Equipment: Equipment{Weapon: "iron_sword", Armor: "iron_armor"},
-		}, nil
+			Inventory: []Stack{{ItemID: "health_potion", Quantity: 1}, {ItemID: "mana_potion", Quantity: 1}},
+			Equipment: Equipment{Weapon: "iron_sword", Armor: "", Accessories: [2]string{"", ""}},
+		}
 	}
+	if catalog != nil {
+		derived := s.derived(catalog)
+		s.HP = derived.MaxHP
+		s.MP = derived.MaxMP
+	}
+	return s, nil
 }
 
 func (s *State) Snapshot(catalog *items.Catalog) PrivateSnapshot {
@@ -426,6 +435,9 @@ func (s *State) Use(itemID, phase string, catalog *items.Catalog) error {
 	}
 	stats := s.derived(catalog)
 	if item.Effect != nil {
+		if (item.Effect.Type == "damage" || item.Effect.Type == "damage_aoe" || item.Effect.Type == "smoke") && phase != "combat" && phase != "pvp" {
+			return ErrWrongPhase
+		}
 		if item.Effect.Type == "heal" && s.HP >= stats.MaxHP {
 			return ErrItemNotUsable
 		}
@@ -566,4 +578,14 @@ func indexValue(index *int) int {
 		return 0
 	}
 	return *index
+}
+
+// Count returns the total quantity of itemID in the inventory.
+func (s *State) Count(itemID string) int {
+	for _, stack := range s.Inventory {
+		if stack.ItemID == itemID {
+			return stack.Quantity
+		}
+	}
+	return 0
 }

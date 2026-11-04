@@ -75,6 +75,15 @@ func (m *Manager) beginActivity(p *player, node dungeon.Node) error {
 				{ID: "altar_blood", Label: "แท่นบูชาสังเวยเลือด (Sacrifice)", Description: "สละ 20 HP เพื่อรับ Greater Health Potion x2", Kind: "sacrifice", ItemID: "greater_health_potion", Value: 20},
 			},
 		}
+	case dungeon.ForgeRoom:
+		p.Activity = &RoomActivity{
+			Type: "FORGE",
+			Options: []RoomOption{
+				{ID: "forge_temper", Label: "หลอมจิตวิญญาณนักรบ (Soul Temper)", Description: "ฟรี! เพิ่มความเร็วถาวร +2 SPD, +10 MaxMP และฟื้นฟู MP เต็ม", Kind: "forge_spd", Value: 0},
+				{ID: "forge_weapon", Label: "ตีบวกคมศัสตรา (Sharpen Blade)", Description: "จ่าย 18 Gold เพื่อเพิ่มพลังโจมตีถาวร +3 ATK", Kind: "forge_atk", Value: 18},
+				{ID: "forge_armor", Label: "เสริมเกราะเหล็กกล้า (Reinforce Armor)", Description: "จ่าย 18 Gold เพื่อเพิ่มป้องกันถาวร +2 DEF และ +15 MaxHP", Kind: "forge_def", Value: 18},
+			},
+		}
 	default:
 		return fmt.Errorf("unsupported room activity %s", node.Type)
 	}
@@ -110,7 +119,13 @@ func (m *Manager) roomAction(r *room, playerID, action, choiceID, itemID string)
 	}
 	a := p.Activity
 	switch a.Type {
-	case "TREASURE", "EVENT", "PUZZLE":
+	case "TREASURE", "EVENT", "PUZZLE", "FORGE":
+		if action == "leave" && a.Type == "FORGE" {
+			if err := m.resolveRoom(p, false); err != nil {
+				return err
+			}
+			break
+		}
 		if action != "claim" || a.Completed {
 			return ErrInvalidPhase
 		}
@@ -129,6 +144,7 @@ func (m *Manager) roomAction(r *room, playerID, action, choiceID, itemID string)
 			if err := p.State.Add(option.ItemID, 1, m.catalog); err != nil {
 				return err
 			}
+			p.recordAcquiredItem(option.ItemID)
 		case "gold":
 			p.State.Gold += option.Value
 		case "heal":
@@ -142,7 +158,9 @@ func (m *Manager) roomAction(r *room, playerID, action, choiceID, itemID string)
 				return errors.New("NOT_ENOUGH_HP")
 			}
 			p.State.Damage(option.Value)
-			_ = p.State.Add(option.ItemID, 2, m.catalog)
+			if err := p.State.Add(option.ItemID, 2, m.catalog); err == nil {
+				p.recordAcquiredItem(option.ItemID)
+			}
 		case "trade":
 			if p.State.Gold < option.Value {
 				return errors.New("NOT_ENOUGH_GOLD")
@@ -151,12 +169,31 @@ func (m *Manager) roomAction(r *room, playerID, action, choiceID, itemID string)
 				return err
 			}
 			p.State.Gold -= option.Value
+			p.recordAcquiredItem(option.ItemID)
 		case "risk":
 			if p.State.HP <= option.Value {
 				return errors.New("NOT_ENOUGH_HP")
 			}
 			p.State.Damage(option.Value)
 			p.State.Gold += 25
+		case "forge_atk":
+			if p.State.Gold < option.Value {
+				return errors.New("NOT_ENOUGH_GOLD")
+			}
+			p.State.Gold -= option.Value
+			p.State.BaseATK += 3
+		case "forge_def":
+			if p.State.Gold < option.Value {
+				return errors.New("NOT_ENOUGH_GOLD")
+			}
+			p.State.Gold -= option.Value
+			p.State.BaseDEF += 2
+			p.State.MaxHP += 15
+			p.State.RestoreHP(p.State.HP+15, m.catalog)
+		case "forge_spd":
+			p.State.BaseSPD += 2
+			p.State.MaxMP += 10
+			p.State.RestoreMP(100, m.catalog)
 		default:
 			return ErrInvalidChoice
 		}
@@ -168,6 +205,9 @@ func (m *Manager) roomAction(r *room, playerID, action, choiceID, itemID string)
 		} else if a.Type == "PUZZLE" {
 			points = 15
 			source = "puzzle"
+		} else if a.Type == "FORGE" {
+			points = 15
+			source = "forge"
 		}
 		nodeID := p.Dungeon.ActiveNodeID
 		if m.recordScoreEvent(r, ScoreEvent{ID: "pve:" + source + ":" + p.ID + ":" + nodeID, PlayerID: p.ID, Category: "pve", Source: source, Points: points}) {
@@ -182,6 +222,21 @@ func (m *Manager) roomAction(r *room, playerID, action, choiceID, itemID string)
 			if err := m.resolveRoom(p, false); err != nil {
 				return err
 			}
+			break
+		}
+		if action == "sell" {
+			if itemID == "" {
+				return ErrInvalidChoice
+			}
+			def, ok := m.catalog.Get(itemID)
+			if !ok {
+				return ErrInvalidChoice
+			}
+			if err := p.State.Remove(itemID, 1); err != nil {
+				return err
+			}
+			sellValue := max(5, def.Price/2)
+			p.State.Gold += sellValue
 			break
 		}
 		if action != "buy" {
@@ -209,6 +264,7 @@ func (m *Manager) roomAction(r *room, playerID, action, choiceID, itemID string)
 		}
 		p.State.Gold -= stock.Price
 		stock.Available = false
+		p.recordAcquiredItem(itemID)
 	default:
 		return ErrInvalidPhase
 	}

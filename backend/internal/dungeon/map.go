@@ -24,6 +24,7 @@ const (
 	RestRoom     RoomType   = "REST"
 	BossRoom     RoomType   = "BOSS"
 	PuzzleRoom   RoomType   = "PUZZLE"
+	ForgeRoom    RoomType   = "FORGE"
 	Locked       NodeStatus = "LOCKED"
 	Available    NodeStatus = "AVAILABLE"
 	InProgress   NodeStatus = "IN_PROGRESS"
@@ -60,6 +61,7 @@ type Node struct {
 	Depth       int        `json:"depth"`
 	Type        RoomType   `json:"type"`
 	Status      NodeStatus `json:"status"`
+	PathLane    string     `json:"path_lane,omitempty"`
 	Connections []string   `json:"connections"`
 }
 
@@ -175,7 +177,15 @@ func Generate(seed uint64, cfg Config) (*State, error) {
 				if spec.Depth > 0 && spec.Depth < lastDepth {
 					typeForNode = weightedRoom(rng, cfg.RoomWeights)
 				}
-				node := Node{ID: fmt.Sprintf("f%d-d%d-n%d", floorNumber, spec.Depth, nodeIndex), Floor: floorNumber, Depth: spec.Depth, Type: typeForNode, Status: Locked, Connections: []string{}}
+				lane := "balanced"
+				if spec.Depth > 0 && spec.Depth < lastDepth {
+					if nodeIndex == 0 {
+						lane = "rush"
+					} else if nodeIndex == count-1 && count > 1 {
+						lane = "farm"
+					}
+				}
+				node := Node{ID: fmt.Sprintf("f%d-d%d-n%d", floorNumber, spec.Depth, nodeIndex), Floor: floorNumber, Depth: spec.Depth, Type: typeForNode, Status: Locked, PathLane: lane, Connections: []string{}}
 				floor.Nodes = append(floor.Nodes, node)
 				layers[spec.Depth] = append(layers[spec.Depth], len(floor.Nodes)-1)
 			}
@@ -183,6 +193,18 @@ func Generate(seed uint64, cfg Config) (*State, error) {
 		for depth := 0; depth < len(layers)-1; depth++ {
 			connectLayers(rng, &floor, layers[depth], layers[depth+1])
 		}
+		// Add Asymmetric Rush Path shortcuts on top lane (d1 -> d3(ELITE) -> d5 -> d6(BOSS))
+		if len(layers) >= 6 && len(layers[1]) > 0 && len(layers[3]) > 0 && len(layers[5]) > 0 {
+			d1Top := layers[1][0]
+			d3Top := layers[3][0]
+			d5Top := layers[5][0]
+			addConnection(&floor.Nodes[d1Top], floor.Nodes[d3Top].ID)
+			sort.Strings(floor.Nodes[d1Top].Connections)
+			addConnection(&floor.Nodes[d3Top], floor.Nodes[d5Top].ID)
+			sort.Strings(floor.Nodes[d3Top].Connections)
+			floor.Nodes[d3Top].Type = EliteRoom
+		}
+		ensureSpecializedRooms(rng, &floor, layers)
 		if cfg.GuaranteeRestOrTreasure {
 			guaranteeRestOrTreasure(rng, &floor, layers)
 		}
@@ -212,6 +234,27 @@ func (s *State) Move(nodeID string) error {
 	if floor.Nodes[targetIndex].Status != Available {
 		return ErrNodeUnavailable
 	}
+	if s.CurrentNodeID != "" {
+		currIdx := findNodeIndex(floor, s.CurrentNodeID)
+		if currIdx >= 0 {
+			connected := false
+			for _, connID := range floor.Nodes[currIdx].Connections {
+				if connID == nodeID {
+					connected = true
+					break
+				}
+			}
+			if !connected {
+				return ErrNodeUnavailable
+			}
+		}
+	}
+	// Lock all other available sibling nodes so the player commits to the chosen path
+	for i := range floor.Nodes {
+		if i != targetIndex && floor.Nodes[i].Status == Available {
+			floor.Nodes[i].Status = Locked
+		}
+	}
 	floor.Nodes[targetIndex].Status = InProgress
 	s.ActiveNodeID = nodeID
 	return nil
@@ -236,12 +279,14 @@ func (s *State) ResolveActive(skipped bool) error {
 	}
 	floor.Nodes[activeIndex].Status = status
 	s.Progress = floor.Nodes[activeIndex].Depth
-	if floor.Nodes[activeIndex].Type == BossRoom {
-		s.CheckpointNodeID = s.ActiveNodeID
-	} else if floor.Nodes[activeIndex].Type == RestRoom {
-		s.CheckpointNodeID = s.ActiveNodeID
-	}
+	s.CheckpointNodeID = s.CurrentNodeID
 	s.ActiveNodeID = ""
+	// Ensure no stale available nodes remain at current or earlier depths
+	for i := range floor.Nodes {
+		if floor.Nodes[i].Status == Available {
+			floor.Nodes[i].Status = Locked
+		}
+	}
 	s.unlockConnected(floor, s.CurrentNodeID)
 	return nil
 }
@@ -252,17 +297,18 @@ func (s *State) Respawn() error {
 	if floor == nil {
 		return ErrInvalidNode
 	}
-	if s.ActiveNodeID != "" {
-		if i := findNodeIndex(floor, s.ActiveNodeID); i >= 0 {
-			floor.Nodes[i].Status = Available
+	for i := range floor.Nodes {
+		if floor.Nodes[i].Status == InProgress || floor.Nodes[i].Status == Available {
+			floor.Nodes[i].Status = Locked
 		}
 	}
 	s.ActiveNodeID = ""
 	s.CurrentNodeID = s.CheckpointNodeID
-	s.Progress = 0
-	if i := findNodeIndex(floor, s.CurrentNodeID); i < 0 {
+	idx := findNodeIndex(floor, s.CurrentNodeID)
+	if idx < 0 {
 		return ErrInvalidNode
 	}
+	s.Progress = floor.Nodes[idx].Depth
 	s.unlockConnected(floor, s.CurrentNodeID)
 	return nil
 }
@@ -272,7 +318,11 @@ func (s *State) PrivateSnapshot() PrivateView {
 	for i, floor := range s.Floors {
 		floors[i] = Floor{Number: floor.Number, DifficultyMultiplier: floor.DifficultyMultiplier, Nodes: make([]Node, len(floor.Nodes))}
 		for j, node := range floor.Nodes {
-			node.Connections = append([]string(nil), node.Connections...)
+			if node.Connections == nil {
+				node.Connections = []string{}
+			} else {
+				node.Connections = append([]string(nil), node.Connections...)
+			}
 			floors[i].Nodes[j] = node
 		}
 	}
@@ -325,13 +375,30 @@ func (s *State) unlockConnected(floor *Floor, nodeID string) {
 }
 
 func connectLayers(rng *rand.Rand, floor *Floor, previous, next []int) {
-	for _, from := range previous {
-		to := next[rng.Intn(len(next))]
-		addConnection(&floor.Nodes[from], floor.Nodes[to].ID)
+	pLen := len(previous)
+	nLen := len(next)
+	if pLen == 0 || nLen == 0 {
+		return
 	}
-	for _, to := range next {
-		from := previous[rng.Intn(len(previous))]
-		addConnection(&floor.Nodes[from], floor.Nodes[to].ID)
+	// 1. Planar backbone: connect proportional pairs so every node has a forward/incoming link without X-crossing
+	for i, from := range previous {
+		targetIdx := (i * nLen) / pLen
+		addConnection(&floor.Nodes[from], floor.Nodes[next[targetIdx]].ID)
+	}
+	for j, to := range next {
+		parentIdx := (j * pLen) / nLen
+		addConnection(&floor.Nodes[previous[parentIdx]], floor.Nodes[to].ID)
+	}
+	// 2. Add non-crossing neighbor branches so players have meaningful route choices
+	if nLen > 1 {
+		for i, from := range previous {
+			baseIdx := (i * nLen) / pLen
+			if baseIdx+1 < nLen && (pLen == 1 || rng.Intn(100) < 65) {
+				addConnection(&floor.Nodes[from], floor.Nodes[next[baseIdx+1]].ID)
+			} else if baseIdx > 0 && rng.Intn(100) < 50 {
+				addConnection(&floor.Nodes[from], floor.Nodes[next[baseIdx-1]].ID)
+			}
+		}
 	}
 	for _, from := range previous {
 		sort.Strings(floor.Nodes[from].Connections)
@@ -356,7 +423,7 @@ func weightedRoom(rng *rand.Rand, weights map[RoomType]int) RoomType {
 		return MonsterRoom
 	}
 	choice := rng.Intn(total)
-	for _, roomType := range []RoomType{MonsterRoom, TreasureRoom, ShopRoom, EventRoom, RestRoom, EliteRoom, PuzzleRoom} {
+	for _, roomType := range []RoomType{MonsterRoom, TreasureRoom, ShopRoom, ForgeRoom, EventRoom, RestRoom, EliteRoom, PuzzleRoom} {
 		weight := weights[roomType]
 		if choice < weight {
 			return roomType
@@ -364,6 +431,42 @@ func weightedRoom(rng *rand.Rand, weights map[RoomType]int) RoomType {
 		choice -= weight
 	}
 	return MonsterRoom
+}
+
+func ensureSpecializedRooms(rng *rand.Rand, floor *Floor, layers [][]int) {
+	if len(layers) < 6 {
+		return
+	}
+	// Guarantee specialized nodes across balanced/farming lanes so every floor has a Market (SHOP), Forge (FORGE), Campfire (REST), and Treasure (TREASURE)
+	type placement struct {
+		depth int
+		room  RoomType
+	}
+	required := []placement{
+		{depth: 2, room: TreasureRoom},
+		{depth: 3, room: ShopRoom},
+		{depth: 4, room: ForgeRoom},
+		{depth: 5, room: RestRoom},
+	}
+	for _, req := range required {
+		hasRoom := false
+		for d := 1; d < len(layers)-1; d++ {
+			for _, idx := range layers[d] {
+				if floor.Nodes[idx].Type == req.room {
+					hasRoom = true
+					break
+				}
+			}
+		}
+		if !hasRoom && req.depth < len(layers) && len(layers[req.depth]) > 0 {
+			layer := layers[req.depth]
+			pickIdx := layer[len(layer)-1]
+			if len(layer) > 1 {
+				pickIdx = layer[1+rng.Intn(len(layer)-1)]
+			}
+			floor.Nodes[pickIdx].Type = req.room
+		}
+	}
 }
 
 func guaranteeRestOrTreasure(rng *rand.Rand, floor *Floor, layers [][]int) {
@@ -396,5 +499,5 @@ func findNodeIndex(floor *Floor, nodeID string) int {
 }
 
 func isDecisionRoom(roomType RoomType) bool {
-	return roomType == MonsterRoom || roomType == TreasureRoom || roomType == ShopRoom || roomType == EventRoom || roomType == RestRoom || roomType == EliteRoom || roomType == PuzzleRoom
+	return roomType == MonsterRoom || roomType == TreasureRoom || roomType == ShopRoom || roomType == ForgeRoom || roomType == EventRoom || roomType == RestRoom || roomType == EliteRoom || roomType == PuzzleRoom
 }

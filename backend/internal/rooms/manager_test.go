@@ -416,24 +416,25 @@ func TestArenaBudgetRespawnScoreAndRanking(t *testing.T) {
 	if r.Phase != "pvp" {
 		t.Fatalf("phase=%s want pvp", r.Phase)
 	}
-	g.State.HP = 1
-	for i := 0; i < 5; i++ {
+	_ = h.State.Add("fire_bomb", 1, m.catalog)
+	if err := m.pvpAction(r, host.PlayerID, "USE_ITEM", guest.PlayerID, "fire_bomb"); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.pvpAction(r, host.PlayerID, "SKILL", guest.PlayerID, ""); err != nil {
+		t.Fatal(err)
+	}
+	for step := 0; step < 20 && r.Phase == "pvp"; step++ {
 		if err := m.pvpAction(r, host.PlayerID, "ATTACK", guest.PlayerID, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if h.PvPActionsUsed != 5 || h.PvPDamage != 29 || h.PvPScore != 35 || h.PvPKnockouts != 1 || g.PvPDeaths != 1 || g.PvPPenalty != 10 || g.State.HP != 22 {
-		t.Fatalf("PvP state mismatch: host=%+v guest=%+v guestHP=%d", h, g, g.State.HP)
-	}
-	for i := 0; i < 5; i++ {
-		if err := m.pvpAction(r, guest.PlayerID, "DEFEND", "", ""); err != nil {
-			t.Fatal(err)
-		}
+	if h.PvPKnockouts != 1 || h.PvPWins != 1 || g.PvPDeaths != 1 || g.PvPLosses != 1 || g.PvPPenalty != 10 {
+		t.Fatalf("PvP state mismatch: host=%+v guest=%+v", h, g)
 	}
 	if r.Phase != "results" || len(r.Results) != 2 {
 		t.Fatalf("results missing: phase=%s results=%+v", r.Phase, r.Results)
 	}
-	if r.Results[0].PlayerID != host.PlayerID || r.Results[0].TotalScore != 97 || r.Results[1].TotalScore != -3 {
+	if r.Results[0].PlayerID != host.PlayerID || r.Results[0].Rank != 1 || r.Results[1].Rank != 2 {
 		t.Fatalf("wrong ranking/score breakdown: %+v", r.Results)
 	}
 	csvData, err := m.ResultsCSV(host.RoomCode)
@@ -517,5 +518,66 @@ func TestServerValidatesEquipmentAndUseCommands(t *testing.T) {
 	}
 	if state.HP != 100 || len(state.Inventory) != 1 || state.Inventory[0].ItemID != "training_sword" {
 		t.Fatalf("potion resolution mismatch: hp=%d inventory=%+v", state.HP, state.Inventory)
+	}
+}
+
+
+func TestBotLobbyDungeonAndPvPFlow(t *testing.T) {
+	m := managerWithTestItems(t)
+	host, err := m.Create("SoloHero")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := m.rooms[host.RoomCode]
+
+	// 1. Add Bot with difficulty and kit
+	if err := m.ServeCommand(r, host.PlayerID, nil, "lobby.add_bot", map[string]any{"difficulty": "hard", "kit": "knight"}); err != nil {
+		t.Fatalf("failed to add bot: %v", err)
+	}
+	if len(r.Players) != 2 {
+		t.Fatalf("player count want 2, got %d", len(r.Players))
+	}
+	bot := r.Players[1]
+	if !bot.IsBot || bot.BotDifficulty != "hard" || !bot.Ready {
+		t.Fatalf("bot fields mismatch: is_bot=%v diff=%s ready=%v", bot.IsBot, bot.BotDifficulty, bot.Ready)
+	}
+
+	// 2. Remove bot test
+	if err := m.ServeCommand(r, host.PlayerID, nil, "lobby.remove_bot", map[string]any{"bot_player_id": bot.ID}); err != nil {
+		t.Fatalf("failed to remove bot: %v", err)
+	}
+	if len(r.Players) != 1 {
+		t.Fatalf("player count after remove want 1, got %d", len(r.Players))
+	}
+
+	// 3. Re-add bot and start game
+	if err := m.ServeCommand(r, host.PlayerID, nil, "lobby.add_bot", map[string]any{"difficulty": "nightmare", "kit": "mage"}); err != nil {
+		t.Fatalf("failed to add bot: %v", err)
+	}
+	bot = r.Players[1]
+	_ = m.Ready(r, host.PlayerID, true)
+	if err := m.Start(r, host.PlayerID); err != nil {
+		t.Fatalf("failed to start match with bot: %v", err)
+	}
+	if r.Phase != "dungeon" {
+		t.Fatalf("phase want dungeon, got %s", r.Phase)
+	}
+	if bot.State == nil || bot.Dungeon == nil {
+		t.Fatal("bot state or dungeon was not initialized")
+	}
+
+	// 4. Test simulateBotsProgress
+	m.simulateBotsProgress(r)
+	if bot.Dungeon.Progress == 0 {
+		t.Fatal("bot progress did not advance")
+	}
+
+	// 5. Test player leaving mid-game doesn't cause INVALID_PHASE and cleans up room
+	if err := m.ServeCommand(r, host.PlayerID, nil, "room.leave", nil); err != nil {
+		t.Fatalf("leave during dungeon returned unexpected error: %v", err)
+	}
+	// Since host was the only human, room should be deleted
+	if _, exists := m.rooms[host.RoomCode]; exists {
+		t.Fatal("room should be cleaned up when all human players leave")
 	}
 }

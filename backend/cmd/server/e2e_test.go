@@ -136,7 +136,14 @@ func TestThreeFloorMatchOverTwoWebSocketClients(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	results := hostClient.snapshot()
+	var results rooms.Snapshot
+	for waitResult := 0; waitResult < 50; waitResult++ {
+		results = hostClient.snapshot()
+		if results.Room.Phase == "results" && len(results.Results) == 2 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 	if results.Room.Phase != "results" || len(results.Results) != 2 {
 		t.Fatalf("final snapshot: phase=%s results=%+v", results.Room.Phase, results.Results)
 	}
@@ -281,7 +288,7 @@ func playE2EDungeon(client *e2eClient) error {
 				if err := client.command("room.action", map[string]any{"action": "leave"}); err != nil {
 					return err
 				}
-			case "TREASURE", "EVENT", "PUZZLE":
+			case "TREASURE", "EVENT", "PUZZLE", "FORGE":
 				if len(private.Activity.Options) == 0 {
 					return fmt.Errorf("%s room has no choices", private.Activity.Type)
 				}

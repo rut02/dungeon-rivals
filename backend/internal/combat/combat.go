@@ -53,7 +53,9 @@ type State struct {
 	Victory       bool     `json:"victory"`
 	Guarding      bool     `json:"guarding"`
 	FirstStrike   bool     `json:"first_strike"`
+	SkillCooldown int      `json:"skill_cooldown"`
 	EscapeSuccess bool     `json:"escape_success"`
+	LootItemID    string   `json:"loot_item_id,omitempty"`
 	Log           []string `json:"log"`
 
 	// Backward compatibility fields for legacy clients
@@ -132,25 +134,25 @@ func (c *Catalog) Create(roomType string, floor int, multiplier float64, seed in
 
 	scale := func(v int) int { return int(math.Ceil(float64(v) * multiplier)) }
 
-	// Determine enemy count
+	// Determine enemy count (Floor 1: 1 monster. Floor 2: 1-2 monsters. Floor 3: 1-3 monsters for weak enemies)
 	count := 1
 	if tier == "normal" {
 		if floor == 1 {
 			count = 1
 		} else if floor == 2 {
-			if rng.Intn(100) < 55 {
+			if rng.Intn(100) < 60 {
 				count = 2
 			} else {
 				count = 1
 			}
 		} else {
-			r := rng.Intn(100)
-			if r < 30 {
-				count = 1
-			} else if r < 75 {
+			roll := rng.Intn(100)
+			if roll < 35 {
+				count = 3
+			} else if roll < 75 {
 				count = 2
 			} else {
-				count = 3
+				count = 1
 			}
 		}
 	}
@@ -163,17 +165,19 @@ func (c *Catalog) Create(roomType string, floor int, multiplier float64, seed in
 		hp := scale(m.BaseHP)
 		atk := scale(m.BaseAttack)
 		def := scale(m.BaseDefense)
+		if count == 2 {
+			hp = max(10, int(math.Ceil(float64(hp)*0.75)))
+			atk = max(3, int(math.Ceil(float64(atk)*0.80)))
+		} else if count >= 3 {
+			hp = max(10, int(math.Ceil(float64(hp)*0.65)))
+			atk = max(3, int(math.Ceil(float64(atk)*0.70)))
+		}
 		spd := m.Speed
 		if spd == 0 {
 			spd = 4
 		}
 		intent := "ATTACK"
 		intentVal := atk
-		// Bosses have a heavy attack prepared for round 2 or 3
-		if m.Tier == "boss" {
-			intent = "ATTACK"
-			intentVal = atk
-		}
 		name := m.Name
 		if count > 1 {
 			name = fmt.Sprintf("%s #%d", m.Name, i+1)

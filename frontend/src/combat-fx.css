@@ -215,12 +215,12 @@
 }
 
 .monster-card {
-  flex: 1 1 180px;
-  max-width: 240px;
+  flex: 1 1 250px;
+  max-width: 330px;
   background: #17151f;
   border: 2px solid #342e40;
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -228,6 +228,72 @@
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
+}
+
+.monster-card.is-boss-card {
+  max-width: 390px;
+  border-color: #b83b48;
+  background: linear-gradient(180deg, #2d161d 0%, #171420 100%);
+}
+
+.monster-card.hero-battle-card {
+  border-color: #4b7bec;
+  background: linear-gradient(180deg, #1b253b 0%, #151421 100%);
+  cursor: default;
+}
+
+.hero-side-badge {
+  background: #4b7bec !important;
+  color: #fff !important;
+}
+
+.hero-stance-pill {
+  border-color: #3867d6 !important;
+  color: #a5c4ff !important;
+}
+
+.hero-giant-sprite-box {
+  position: relative;
+}
+
+.hero-equipped-weapon-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: rgba(20, 16, 30, 0.92);
+  border: 2px solid #ffd166;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+}
+
+.hero-equipped-weapon-badge img {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+.combat-vs-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  color: #ffd166;
+  font-weight: 800;
+}
+
+.combat-vs-divider span {
+  font-size: 34px;
+  filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.5));
+}
+
+.combat-vs-divider small {
+  font-size: 16px;
+  letter-spacing: 0.14em;
 }
 
 .monster-card:hover:not(.is-dead) {
@@ -320,21 +386,32 @@
 }
 
 .monster-card-sprite {
-  width: 100px;
-  height: 100px;
+  width: 175px;
+  height: 175px;
   display: grid;
   place-items: center;
   position: relative;
-  margin: 4px 0;
+  margin: 8px 0;
 }
 
 .monster-card-sprite img {
-  width: 80px;
-  height: 80px;
+  width: 155px;
+  height: 155px;
+  object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.75));
   transition: transform 0.2s ease;
+}
+
+.monster-card.is-boss-card .monster-card-sprite {
+  width: 205px;
+  height: 205px;
+}
+
+.monster-card.is-boss-card .monster-card-sprite img {
+  width: 190px;
+  height: 190px;
 }
 
 .monster-card:hover .monster-card-sprite img {
@@ -761,4 +838,427 @@
   .lore-tome {
     padding: 16px;
   }
+}
+
+
+/* Topbar Exit / Leave Button */
+.leave-topbar-btn {
+  background: #3e1b22;
+  color: #f7a8a8;
+  border: 1px solid #75333f;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.leave-topbar-btn:hover {
+  background: #5a242f;
+  color: #fff;
+  border-color: #a84252;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(168, 66, 82, 0.35);
+}
+
+/* Solo / Bot Manager Panel */
+.bot-manager-panel {
+  margin-top: 18px;
+  background: linear-gradient(135deg, #181924, #13141d);
+  border: 1px solid #3d3b50;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.bot-manager-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bot-manager-title h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e5def0;
+}
+.bot-desc-hint {
+  font-size: 11px;
+  color: var(--muted, #a39dad);
+}
+.bot-controls {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr auto;
+  gap: 12px;
+  align-items: flex-end;
+}
+@media (max-width: 680px) {
+  .bot-controls {
+    grid-template-columns: 1fr;
+  }
+}
+.bot-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bot-field label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #bbb5c8;
+  margin-bottom: 0;
+}
+.bot-select {
+  height: 40px;
+  background: #100f17;
+  border: 1px solid #3d394d;
+  border-radius: 6px;
+  color: #f1ecf7;
+  padding: 0 10px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+.bot-select:focus {
+  border-color: var(--gold, #e7bb73);
+}
+.bot-btn-group {
+  display: flex;
+  gap: 8px;
+}
+.solo-start-btn {
+  white-space: nowrap;
+  animation: goldGlow 2s infinite ease-in-out;
+}
+@keyframes goldGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(223, 184, 111, 0.2); }
+  50% { box-shadow: 0 0 18px rgba(223, 184, 111, 0.5); }
+}
+.bot-pill {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: 600;
+  vertical-align: middle;
+  letter-spacing: 0.05em;
+  display: inline-block;
+}
+.bot-pill-easy {
+  background: #173224;
+  color: #8edba6;
+  border: 1px solid #2d5e41;
+}
+.bot-pill-normal {
+  background: #1e263d;
+  color: #9cbbf7;
+  border: 1px solid #364875;
+}
+.bot-pill-hard {
+  background: #3d2218;
+  color: #fca079;
+  border: 1px solid #753d26;
+}
+.bot-pill-nightmare {
+  background: #39142f;
+  color: #f779cb;
+  border: 1px solid #75205d;
+}
+.remove-bot-btn {
+  background: transparent;
+  border: 1px solid #5a3038;
+  color: #e08b98;
+  border-radius: 4px;
+  padding: 4px 9px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: 6px;
+}
+.remove-bot-btn:hover {
+  background: #501d26;
+  color: #fff;
+  border-color: #8e2b3c;
+}
+.bot-arena-tag {
+  font-size: 10px;
+  background: #2b1f3d;
+  color: #cbb8e8;
+  border: 1px solid #583f7d;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 6px;
+}
+
+/* Victory Loot Sparkle Showcase inside Combat Finish Modal */
+.victory-loot-sparkle-box {
+  position: relative;
+  margin: 14px 0 8px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(72, 52, 22, 0.85), rgba(30, 22, 44, 0.95));
+  border: 2px solid #ffd166;
+  box-shadow: 0 0 26px rgba(255, 209, 102, 0.45);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.victory-loot-sprite {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #1b1626;
+  border: 2px solid #f0c465;
+  border-radius: 12px;
+  padding: 6px;
+  flex-shrink: 0;
+}
+
+.victory-loot-meta {
+  display: grid;
+  gap: 3px;
+}
+
+.victory-loot-meta strong {
+  font-size: 18px;
+  color: #fff8e7;
+}
+
+.victory-loot-meta small {
+  font-size: 13px;
+  color: #dcd2ec;
+}
+
+/* =========================================================
+   ROUND-ROBIN PVP TOURNAMENT & GIANT 1v1 DUEL STAGE
+   ========================================================= */
+.pvp-bracket-strip {
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #161320;
+  border: 1px solid #3c3450;
+  display: grid;
+  gap: 10px;
+}
+
+.pvp-bracket-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #d6cde6;
+}
+
+.pvp-bouts-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pvp-bout-pill {
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #1f1b2c;
+  border: 1px solid #413857;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.pvp-bout-pill.is-active {
+  border-color: #ffd166;
+  background: linear-gradient(135deg, #382a18, #211b2e);
+  box-shadow: 0 0 16px rgba(255, 209, 102, 0.35);
+}
+
+.pvp-bout-pill.is-done {
+  border-color: #36694d;
+  opacity: 0.88;
+}
+
+.pvp-bout-pill.is-tiebreaker {
+  border-color: #ff6b6b;
+}
+
+.bout-num-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e3d9f2;
+}
+
+.bout-winner-tag {
+  color: #7bed9f;
+  font-weight: 700;
+}
+
+.bout-live-tag {
+  color: #ffd166;
+  font-weight: 700;
+}
+
+.bout-wait-tag {
+  color: #9b92ad;
+}
+
+.pvp-duel-stage {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 24px;
+  margin: 18px 0;
+  flex-wrap: wrap;
+}
+
+.duel-fighter-card {
+  flex: 1 1 320px;
+  max-width: 440px;
+  padding: 22px;
+  border-radius: 18px;
+  background: #181523;
+  border: 2px solid #453c5c;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  gap: 10px;
+}
+
+.duel-fighter-card.is-self {
+  border-color: #4b7bec;
+  background: linear-gradient(180deg, #1d2740 0%, #151320 100%);
+}
+
+.duel-fighter-card.is-rival {
+  border-color: #eb3b5a;
+  background: linear-gradient(180deg, #381822 0%, #161320 100%);
+}
+
+.duel-corner-badge {
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.duel-corner-badge.self-badge {
+  background: #3867d6;
+  color: #fff;
+}
+
+.duel-corner-badge.rival-badge {
+  background: #eb3b5a;
+  color: #fff;
+}
+
+.duel-sprite-box {
+  position: relative;
+  width: 175px;
+  height: 175px;
+  display: grid;
+  place-items: center;
+}
+
+.duel-giant-sprite {
+  width: 155px;
+  height: 155px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.8));
+}
+
+.duel-weapon-float {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: #1b1626;
+  border: 2px solid #ffd166;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+}
+
+.duel-weapon-float img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.duel-fighter-name {
+  font-size: 20px;
+  color: #fff8eb;
+}
+
+.duel-stat-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.duel-stat-badges span {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e6def2;
+}
+
+.duel-bars {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.duel-vs-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 10px;
+  text-align: center;
+}
+
+.duel-vs-emblem {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #523919 0%, #1d1628 100%);
+  border: 3px solid #ffd166;
+  box-shadow: 0 0 24px rgba(255, 209, 102, 0.5);
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 900;
+  color: #ffd166;
+}
+
+.tiebreaker-flare {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #eb3b5a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pvp-action-bar {
+  margin-top: 16px;
 }

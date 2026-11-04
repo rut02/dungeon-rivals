@@ -376,5 +376,54 @@
     "name": "Shadow Assassin",
     "filename": "shadow_assassin.png",
     "prompt": "64-bit dark fantasy pixel art monster sprite of a Shadow Assassin, faceless obsidian masked wraith killer, shrouded in billowing violet shadow smoke, twin glowing amethyst eyes, wielding dual curved poisoned sickles, dynamic lethal stance, full body elite sprite, isolated on pure solid black background, no background, no text"
+  },
+  {
+    "id": "crypt_stalker",
+    "category": "monster",
+    "name": "Crypt Stalker",
+    "filename": "crypt_stalker.png",
+    "prompt": "64-bit pixel art monster sprite of a giant venomous crypt spider with glowing purple eyes, fangs dripping green venom, and dark chitin armor legs, dark fantasy RPG enemy sprite, centered full body, isolated on a pure solid flat black background #000000, crisp pixel edges, high contrast, no text, no frame"
+  },
+  {
+    "id": "frost_slime",
+    "category": "monster",
+    "name": "Frost Slime",
+    "filename": "frost_slime.png",
+    "prompt": "64-bit pixel art monster sprite of a translucent crystalline ice slime monster with sharp frozen icicle spikes and a glowing cyan frost core inside, dark fantasy RPG enemy sprite, centered full body, isolated on a pure solid flat black background #000000, crisp pixel edges, high contrast, no text, no frame"
+  },
+  {
+    "id": "dread_archer",
+    "category": "monster",
+    "name": "Dread Archer",
+    "filename": "dread_archer.png",
+    "prompt": "64-bit pixel art monster sprite of an undead skeleton archer wearing tattered dark hooded cloak aiming a bone longbow with a glowing cursed green arrow, dark fantasy RPG enemy sprite, centered full body, isolated on a pure solid flat black background #000000, crisp pixel edges, high contrast, no text, no frame"
+  },
+  {
+    "id": "abyss_orc",
+    "category": "monster",
+    "name": "Abyss Orc",
+    "filename": "abyss_orc.png",
+    "prompt": "64-bit pixel art monster sprite of a hulking abyssal orc berserker with dark purple corrupted skin, glowing red eyes, spiked black iron shoulder pads, and a massive cleaver axe, dark fantasy RPG enemy sprite, centered full body, isolated on a pure solid flat black background #000000, crisp pixel edges, high contrast, no text, no frame"
+  },
+  {
+    "id": "bone_reaper",
+    "category": "monster",
+    "name": "Bone Reaper",
+    "filename": "bone_reaper.png",
+    "prompt": "64-bit pixel art monster sprite of a terrifying undead Grim Reaper lich floating in tattered spectral robes holding a giant glowing soul-harvesting bone scythe, dark fantasy RPG elite enemy sprite, centered full body, isolated on a pure solid flat black background #000000, crisp pixel edges, high contrast, no text, no frame"
+  },
+  {
+    "id": "crimson_warlord",
+    "category": "monster",
+    "name": "Crimson Warlord",
+    "filename": "crimson_warlord.png",
+    "prompt": "64-bit pixel art monster sprite of a towering blood-cursed demonic knight warlord in ornate crimson and black spiked plate armor wielding a blazing blood greatsword, dark fantasy RPG elite boss sprite, centered full body, isolated on a pure solid flat black background #000000, crisp pixel edges, high contrast, no text, no frame"
+  },
+  {
+    "id": "dungeon_cover",
+    "category": "cover",
+    "name": "Dungeon Rivals Cover Art",
+    "filename": "dungeon-cover.png",
+    "prompt": "64-bit dark fantasy pixel art title cover art of Dungeon Rivals: an ancient massive gothic obsidian gate inside a vast subterranean cavern glowing with eerie turquoise cyan and purple soulfire, crumbling stone steps covered in glowing arcane runes, dark mist drifting from the crypt portal entrance, cinematic wide illustration, atmospheric dark fantasy, Blasphemous and Dark Souls pixel art aesthetic, dramatic volumetric lighting, high contrast, crisp pixel details, no text"
   }
 ]

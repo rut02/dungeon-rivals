@@ -388,7 +388,7 @@ func TestPreparationWaitsForDungeonCompletionAndAllReady(t *testing.T) {
 	}
 }
 
-func TestArenaBudgetRespawnScoreAndRanking(t *testing.T) {
+func TestArenaAlternatingTurnsAndRanking(t *testing.T) {
 	m := managerWithCombat(t)
 	host, _ := m.Create("Host")
 	guest, _ := m.Join(host.RoomCode, "Guest")
@@ -416,30 +416,102 @@ func TestArenaBudgetRespawnScoreAndRanking(t *testing.T) {
 	if r.Phase != "pvp" {
 		t.Fatalf("phase=%s want pvp", r.Phase)
 	}
-	_ = h.State.Add("fire_bomb", 1, m.catalog)
-	if err := m.pvpAction(r, host.PlayerID, "USE_ITEM", guest.PlayerID, "fire_bomb"); err != nil {
+	bout := m.currentBoutLocked(r)
+	if bout == nil {
+		t.Fatal("PvP bout was not initialized")
+	}
+	firstActorID := bout.CurrentTurnPlayerID
+	firstTargetID := bout.PlayerAID
+	if firstActorID == bout.PlayerAID {
+		firstTargetID = bout.PlayerBID
+	}
+	if err := m.pvpAction(r, firstTargetID, "ATTACK", firstActorID, ""); err == nil || err.Error() != "PVP_NOT_YOUR_TURN" {
+		t.Fatalf("out-of-turn action error=%v, want PVP_NOT_YOUR_TURN", err)
+	}
+	if err := m.pvpAction(r, firstActorID, "ATTACK", firstTargetID, ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.pvpAction(r, host.PlayerID, "SKILL", guest.PlayerID, ""); err != nil {
-		t.Fatal(err)
+	if bout := m.currentBoutLocked(r); bout == nil || bout.CurrentTurnPlayerID != firstTargetID {
+		t.Fatalf("turn did not pass to opponent: bout=%+v", bout)
 	}
-	for step := 0; step < 20 && r.Phase == "pvp"; step++ {
-		if err := m.pvpAction(r, host.PlayerID, "ATTACK", guest.PlayerID, ""); err != nil {
+	if err := m.pvpAction(r, firstActorID, "ATTACK", firstTargetID, ""); err == nil || err.Error() != "PVP_NOT_YOUR_TURN" {
+		t.Fatalf("repeat action error=%v, want PVP_NOT_YOUR_TURN", err)
+	}
+	for step := 0; step < 200 && r.Phase == "pvp"; step++ {
+		bout := m.currentBoutLocked(r)
+		if bout == nil {
+			break
+		}
+		actorID, targetID := bout.CurrentTurnPlayerID, bout.PlayerAID
+		if actorID == bout.PlayerAID {
+			targetID = bout.PlayerBID
+		}
+		if err := m.pvpAction(r, actorID, "ATTACK", targetID, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if h.PvPKnockouts != 1 || h.PvPWins != 1 || g.PvPDeaths != 1 || g.PvPLosses != 1 || g.PvPPenalty != 10 {
-		t.Fatalf("PvP state mismatch: host=%+v guest=%+v", h, g)
+	if h.PvPWins+g.PvPWins != 1 || h.PvPDeaths+g.PvPDeaths != 1 || h.PvPLosses+g.PvPLosses != 1 {
+		t.Fatalf("expected one knockout result: host=%+v guest=%+v", h, g)
 	}
 	if r.Phase != "results" || len(r.Results) != 2 {
 		t.Fatalf("results missing: phase=%s results=%+v", r.Phase, r.Results)
 	}
-	if r.Results[0].PlayerID != host.PlayerID || r.Results[0].Rank != 1 || r.Results[1].Rank != 2 {
+	if r.Results[0].Rank != 1 || r.Results[1].Rank != 2 || r.Results[0].TotalScore < r.Results[1].TotalScore {
 		t.Fatalf("wrong ranking/score breakdown: %+v", r.Results)
 	}
 	csvData, err := m.ResultsCSV(host.RoomCode)
 	if err != nil || !strings.Contains(string(csvData), "total_score") || !strings.Contains(string(csvData), "Host") {
 		t.Fatalf("CSV export missing scoreboard: %q, %v", csvData, err)
+	}
+}
+
+func TestRoundRobinFinishesEveryPairBeforeResults(t *testing.T) {
+	m := managerWithCombat(t)
+	s1, _ := m.Create("One")
+	s2, _ := m.Join(s1.RoomCode, "Two")
+	s3, _ := m.Join(s1.RoomCode, "Three")
+	r := m.rooms[s1.RoomCode]
+	for _, session := range []SessionResponse{s1, s2, s3} {
+		if err := m.setReady(r, session.PlayerID, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := m.start(r, s1.PlayerID); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range r.Players {
+		p.Dungeon.Completed = true
+	}
+	m.maybePreparation(r)
+	for _, session := range []SessionResponse{s1, s2, s3} {
+		if err := m.setPreparationReady(r, session.PlayerID, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if r.Phase != "pvp" || len(r.PvPBouts) != 3 {
+		t.Fatalf("round-robin schedule: phase=%s bouts=%d, want pvp and 3 bouts", r.Phase, len(r.PvPBouts))
+	}
+	for i := 0; i < 3; i++ {
+		bout := m.currentBoutLocked(r)
+		if bout == nil {
+			t.Fatalf("bout %d missing before all matches finished", i+1)
+		}
+		actor := findPlayer(r, bout.CurrentTurnPlayerID)
+		targetID := bout.PlayerAID
+		if actor.ID == bout.PlayerAID {
+			targetID = bout.PlayerBID
+		}
+		target := findPlayer(r, targetID)
+		target.State.HP = 1
+		if err := m.pvpAction(r, actor.ID, "ATTACK", targetID, ""); err != nil {
+			t.Fatal(err)
+		}
+		if i < 2 && r.Phase != "pvp" {
+			t.Fatalf("results started after %d bouts; want all 3", i+1)
+		}
+	}
+	if r.Phase != "results" || len(r.Results) != 3 || len(r.PvPBouts) != 3 {
+		t.Fatalf("round-robin result: phase=%s results=%d bouts=%d", r.Phase, len(r.Results), len(r.PvPBouts))
 	}
 }
 
@@ -520,7 +592,6 @@ func TestServerValidatesEquipmentAndUseCommands(t *testing.T) {
 		t.Fatalf("potion resolution mismatch: hp=%d inventory=%+v", state.HP, state.Inventory)
 	}
 }
-
 
 func TestBotLobbyDungeonAndPvPFlow(t *testing.T) {
 	m := managerWithTestItems(t)

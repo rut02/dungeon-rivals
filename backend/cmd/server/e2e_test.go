@@ -126,14 +126,38 @@ func TestThreeFloorMatchOverTwoWebSocketClients(t *testing.T) {
 	if phase := guestClient.snapshot().Room.Phase; phase != "pvp" {
 		t.Fatalf("phase after everyone readied=%q, want pvp", phase)
 	}
-	for i := 0; i < 5; i++ {
-		if err := hostClient.command("pvp.action", map[string]any{"action": "DEFEND"}); err != nil {
+	for step := 0; step < 200; step++ {
+		state := hostClient.snapshot()
+		if guestState := guestClient.snapshot(); guestState.Version > state.Version {
+			state = guestState
+		}
+		if state.Room.Phase == "results" {
+			break
+		}
+		turnID := ""
+		if state.Me.Private != nil {
+			turnID = state.Me.Private.PvPCurrentTurnID
+		}
+		client := hostClient
+		if turnID == guest.PlayerID {
+			client = guestClient
+		}
+		if turnID == "" {
+			t.Fatalf("PvP snapshot has no current turn: %+v", state.Me.Private)
+		}
+		if err := client.command("pvp.action", map[string]any{"action": "ATTACK"}); err != nil {
 			t.Fatal(err)
 		}
-	}
-	for i := 0; i < 5; i++ {
-		if err := guestClient.command("pvp.action", map[string]any{"action": "DEFEND"}); err != nil {
-			t.Fatal(err)
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			latest := hostClient.snapshot()
+			if guestState := guestClient.snapshot(); guestState.Version > latest.Version {
+				latest = guestState
+			}
+			if latest.Version > state.Version {
+				break
+			}
+			time.Sleep(time.Millisecond)
 		}
 	}
 	var results rooms.Snapshot

@@ -120,8 +120,8 @@ Dungeon Rivals คือเว็บเกม Multiplayer สำหรับผ�
 | Backpack capacity | 12 Slots (Stackable Item นับตาม Stack) |
 | Equipment slots | Weapon 1, Armor 1, Helmet 1, Accessory 2 |
 | Consumable quick slots | 3 (อ้างอิง Item ใน Backpack) |
-| PvP Actions | 5 Action ต่อผู้เล่น |
-| PvP action resolution | Independent; Server รับและ Resolve ตามลำดับ Request ที่เข้ามา |
+| PvP Actions | Round-Robin ทุกคู่; แต่ละคู่สู้จนผู้เล่นฝ่ายหนึ่ง HP หมด |
+| PvP action resolution | สลับ Turn ระหว่างคู่ต่อสู้; Server ปฏิเสธ Action จากผู้เล่นที่ยังไม่ถึง Turn |
 | Inactivity handling | MVP ใช้ Reconnect และ Host Kick / Force Finish; ยังไม่บังคับเวลาต่อ Turn |
 | Result persistence | ไม่บันทึกถาวรในรอบแรก; เพิ่ม CSV หลัง Game Result ทำงานแล้ว |
 
@@ -713,10 +713,11 @@ type ScoreEvent struct {
 - ผู้เล่นทุกคนเข้าสู่ Arena หลัง Ready ครบ
 - HP ถูก Restore เป็น Max HP ณ จุดเริ่ม PvP
 - Equipment และ Consumables ที่เหลือจาก Dungeon ติดตัวไปด้วย
-- แต่ละคนมี PvP Action Budget 5 ครั้ง
-- Action ของผู้เล่น Resolve ทันที ไม่ต้องรอผู้เล่นคนอื่น
-- Server serialize Action ตามลำดับ Request ที่ได้รับ
-- ผู้เล่นเลือก Target ได้จากรายชื่อคนอื่นใน Match
+- จัดคู่ Round-Robin ให้ผู้เล่นทุกคู่ได้ต่อสู้กัน
+- ผู้เล่น SPD สูงกว่าได้เริ่มก่อน; หาก SPD เท่ากันสุ่มผู้เริ่ม แล้วสลับ Turn จนผู้เล่นฝ่ายหนึ่ง HP หมด
+- บันทึกผลชนะ/แพ้และ Knockout หลังจบแต่ละคู่
+- ฟื้นฟู HP/MP เต็มก่อนเริ่มคู่ถัดไป เพื่อให้ทุกคู่เริ่มต้นอย่างยุติธรรม
+- เมื่อทุกคู่จบแล้วจึงรวมคะแนนและประกาศอันดับ ไม่มีรอบตัดสินพิเศษเพิ่ม
 
 ## 10.2 PvP Actions
 
@@ -730,14 +731,14 @@ type ScoreEvent struct {
 
 ## 10.3 Match End
 
-- จบเมื่อทุก Player ใช้ 5 Actions ครบ
+- จบเมื่อทุกคู่ในตาราง Round-Robin แข่งจนมีผู้เล่นฝ่ายหนึ่ง HP หมด
 - Host สามารถ Force Finish ได้เฉพาะเมื่อมีเหตุจำเป็น เช่น Player หลุดถาวรและ Room ค้าง โดยต้องแสดงผลคะแนนตาม State ที่ Server ยืนยัน ณ เวลานั้น
 - เมื่อจบ ให้รวม Score และประกาศอันดับ
 - ไม่จำเป็นต้องเหลือ Player คนสุดท้าย
 
 ## 10.4 หมายเหตุเรื่องความยุติธรรม
 
-Independent PvP หมายความว่า Action ที่ส่งเข้ามาก่อนจะถูก Resolve ก่อน จึงมีผลจากลำดับ Request จริง เพื่อไม่ให้ผู้เล่นใช้ Action ไม่จำกัด ทุกคนมี Action Budget เท่ากัน 5 ครั้ง การปรับ Balance เช่น Action Cooldown หรือระบบป้องกันผู้เล่นที่ถูกโจมตีถี่เกินไปถือเป็น Post-MVP ไม่ควรเพิ่มจนกว่าจะทดลอง Prototype
+PvP เป็นการต่อสู้แบบ Turn-based ภายในคู่ปัจจุบันเท่านั้น ผู้เล่น SPD สูงกว่าได้เริ่มก่อนและสุ่มผู้เริ่มเมื่อ SPD เท่ากัน Server ตรวจสอบผู้เล่นที่ได้ Turn ทุกครั้งเพื่อป้องกันการกด Action ซ้ำก่อนคู่ต่อสู้ตอบกลับ การต่อสู้จบเมื่อฝ่ายใดฝ่ายหนึ่ง HP หมด และดำเนินต่อจนครบทุกคู่ในตาราง Round-Robin ก่อนคำนวณอันดับรวม
 
 ---
 
@@ -1703,8 +1704,8 @@ match_id,finished_at,room_code,player_id,player_name,rank,total_score,pve_score,
 7. Player A ตายและ Respawn โดยยังเล่นต่อได้
 8. ทั้งคู่ผ่าน Boss และเข้าสู่ Preparation
 9. ทั้งคู่ Ready แล้วเข้าสู่ Final PvP
-10. แต่ละคนใช้ 5 Actions ได้โดยไม่เกิด Duplicate
-11. ตรวจ Score และ Tie-breaker
+10. ต่อสู้แบบสลับ Turn จนมีฝ่ายหนึ่ง Knockout และตรวจว่าผู้เล่นที่ยังไม่ถึง Turn ถูกปฏิเสธ
+11. ตรวจว่าทุกคู่ในตาราง Round-Robin แข่งครบก่อนคำนวณ Score และ Ranking
 12. จบเกมแล้วแสดง Result
 13. ตรวจว่าไม่มี Database ถูกเรียกใช้
 
@@ -1868,7 +1869,7 @@ Acceptance:
 
 Tasks:
 - Arena State
-- PvP Action Budget 5
+- Round-Robin PvP พร้อม Turn สลับและจบคู่เมื่อ Knockout
 - Attack Target
 - Defend
 - Use Item
@@ -1929,7 +1930,8 @@ Acceptance:
 - [ ] ผู้เล่นผ่าน Dungeon และเข้าสู่ Preparation ได้
 - [ ] ทุกคน Ready แล้วเข้าสู่ Final PvP ได้
 - [ ] Final PvP มี Attack / Defend / Use Item
-- [ ] PvP Actions เป็น Independent และมี Budget 5 ต่อคน
+- [ ] PvP สลับ Turn ภายในคู่และปฏิเสธ Action ผิด Turn
+- [ ] PvP ทุกคู่จบด้วย Knockout ก่อนสรุปคะแนนและ Ranking
 - [ ] PvP Death มี Respawn
 - [ ] คะแนน PvE / PvP / Gold / Penalty คำนวณได้
 - [ ] Results แสดง Ranking และ Score Breakdown
@@ -1975,8 +1977,8 @@ Acceptance:
 3. Respawn Penalty 20% Gold + Item 1 ชิ้น
 4. จำนวน Node และจำนวน Encounter ต่อ Floor
 5. คะแนน PvE / PvP และ Gold Conversion
-6. PvP จำนวน 5 Actions ต่อคน
-7. การ Resolve Attack ตามลำดับ Request ที่ Server ได้รับ
+6. PvP จัดตาราง Round-Robin และสู้จน Knockout
+7. การสลับ Turn และการปฏิเสธ Action ที่ส่งผิด Turn
 8. Inactivity / Disconnect / Host Kick Policy
 9. Inventory Capacity และ Stack Limits
 10. HP Restore ก่อน Final PvP

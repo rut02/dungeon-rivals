@@ -87,7 +87,6 @@ type PvPBoutView = {
   player_b_name: string
   winner_id?: string
   winner_name?: string
-  is_tiebreaker?: boolean
   finished: boolean
 }
 
@@ -126,7 +125,8 @@ type PrivateState = {
   last_acquired_item_id?: string
   last_acquired_seq?: number
   pvp_actions_used?: number
-  pvp_actions_remaining?: number
+  pvp_current_turn_player_id?: string
+  pvp_your_turn?: boolean
   pvp_score?: number
   pvp_damage?: number
   pvp_knockouts?: number
@@ -135,7 +135,6 @@ type PrivateState = {
   pvp_current_opponent_id?: string
   pvp_bout_number?: number
   pvp_total_bouts?: number
-  pvp_is_tiebreaker?: boolean
   pvp_log?: string[]
   pvp_bouts?: PvPBoutView[]
 }
@@ -154,7 +153,6 @@ type PublicPlayer = Player & {
   def?: number
   spd?: number
   weapon_skill?: string
-  pvp_actions_remaining: number
   pvp_score: number
   pvp_damage: number
   pvp_knockouts: number
@@ -1371,7 +1369,7 @@ function ArenaPanel({
 
   const boutNum = state.pvp_bout_number || 1
   const totalBouts = state.pvp_total_bouts || Math.max(1, opponents.length)
-  const isTiebreaker = Boolean(state.pvp_is_tiebreaker)
+  const isYourTurn = Boolean(state.pvp_your_turn)
   const pvpLog = state.pvp_log || []
   const pvpBouts = state.pvp_bouts || []
 
@@ -1380,9 +1378,7 @@ function ArenaPanel({
       <div className="panel-title">
         <div>
           <span className="eyebrow">
-            {isTiebreaker
-              ? '⚡ SUDDEN-DEATH TIEBREAKER · รอบตัดสินแชมป์เมื่อคะแนนชนะเท่ากัน!'
-              : `ROUND-ROBIN PVP TOURNAMENT · คู่ที่ ${boutNum} จาก ${totalBouts} · สู้จนกว่า HP ฝ่ายใดจะเป็น 0`}
+            {`ROUND-ROBIN PVP TOURNAMENT · คู่ที่ ${boutNum} จาก ${totalBouts} · สู้จนกว่า HP ฝ่ายใดจะเป็น 0`}
           </span>
           <h2>⚔️ สังเวียนประลองจัดอันดับ (Round-Robin Arena)</h2>
         </div>
@@ -1395,16 +1391,16 @@ function ArenaPanel({
       {/* Round-Robin Schedule & Standings Bar */}
       {pvpBouts.length > 0 && (
         <div className="pvp-bracket-strip">
-          <div className="pvp-bracket-title">📋 ตารางการประลองพบกันหมด (Round-Robin & Tiebreaker):</div>
+          <div className="pvp-bracket-title">📋 ตารางการประลองพบกันหมด (Round-Robin):</div>
           <div className="pvp-bouts-row">
             {pvpBouts.map((b) => {
               const isCurrentBout = !b.finished && b.bout_number === boutNum
               return (
                 <div
                   key={b.bout_number}
-                  className={`pvp-bout-pill ${b.finished ? 'is-done' : ''} ${isCurrentBout ? 'is-active' : ''} ${b.is_tiebreaker ? 'is-tiebreaker' : ''}`}
+                  className={`pvp-bout-pill ${b.finished ? 'is-done' : ''} ${isCurrentBout ? 'is-active' : ''}`}
                 >
-                  <span className="bout-num-tag">{b.is_tiebreaker ? '⚡ รอบตัดสิน' : `คู่ที่ ${b.bout_number}`}</span>
+                  <span className="bout-num-tag">{`คู่ที่ ${b.bout_number}`}</span>
                   <strong>{b.player_a_name} vs {b.player_b_name}</strong>
                   {b.finished ? (
                     <span className="bout-winner-tag">👑 {b.winner_name} ชนะ!</span>
@@ -1451,7 +1447,6 @@ function ArenaPanel({
           <div className="duel-vs-column">
             <div className="duel-vs-emblem">VS</div>
             <small>สู้กันจนกว่า HP ฝ่ายใดจะเป็น 0</small>
-            {isTiebreaker && <span className="tiebreaker-flare">⚡ SUDDEN DEATH</span>}
           </div>
 
           {/* Right Fighter: Current Opponent */}
@@ -1488,8 +1483,12 @@ function ArenaPanel({
       {/* Full Action Bar: Normal Attack, Weapon Skill, Defend, Bombs & Potions */}
       {currentOpponent && (
         <div className="combat-actions pvp-action-bar">
+          <p className="pvp-turn-status" role="status">
+            {isYourTurn ? 'ตาของคุณ เลือกแอ็กชันได้เลย' : `กำลังรอ ${currentOpponent.name} เล่น`}
+          </p>
           <button
             className="button button-primary"
+            disabled={!isYourTurn}
             onClick={() => {
               sound.playSlash()
               onCommand('pvp.action', { action: 'ATTACK', target_player_id: currentOpponent.player_id })
@@ -1501,7 +1500,7 @@ function ArenaPanel({
           {state.stats.weapon_skill && (
             <button
               className="button skill-button"
-              disabled={!canSkill}
+              disabled={!isYourTurn || !canSkill}
               onClick={() => {
                 sound.playCrit()
                 onCommand('pvp.action', { action: 'SKILL', target_player_id: currentOpponent.player_id })
@@ -1515,6 +1514,7 @@ function ArenaPanel({
 
           <button
             className="button button-outline"
+            disabled={!isYourTurn}
             onClick={() => {
               sound.playShield()
               onCommand('pvp.action', { action: 'DEFEND', target_player_id: currentOpponent.player_id })
@@ -1530,6 +1530,7 @@ function ArenaPanel({
               <button
                 className={`button ${isBomb ? 'button-gold' : 'button-outline'} button-with-icon`}
                 key={item.item_id}
+                disabled={!isYourTurn}
                 onClick={() => {
                   if (isBomb) sound.playCrit()
                   else sound.playShield()

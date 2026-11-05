@@ -10,12 +10,9 @@ import (
 	"dungeon-rivals/backend/internal/playerstate"
 )
 
-var ErrPvPActionBudget = errors.New("PVP_ACTION_BUDGET_EXHAUSTED")
-
 func (m *Manager) initPvPTournamentLocked(r *room) {
 	r.PvPBouts = nil
 	r.CurrentBoutIdx = 0
-	r.TiebreakerPlayed = false
 	r.PvPLog = []string{"⚔️ ศึกประลองจัดอันดับ (Round-Robin Arena) เริ่มต้นขึ้นแล้ว! สู้กันตัวต่อตัวจนกว่า HP ฝ่ายใดจะเป็น 0!"}
 
 	n := len(r.Players)
@@ -28,10 +25,17 @@ func (m *Manager) initPvPTournamentLocked(r *room) {
 				pB := r.Players[j]
 				bothBots := pA.IsBot && pB.IsBot
 				if (pass == 0 && !bothBots) || (pass == 1 && bothBots) {
+					firstTurnID := pA.ID
+					aSpeed := pA.State.Stats(m.catalog).SPD
+					bSpeed := pB.State.Stats(m.catalog).SPD
+					if bSpeed > aSpeed || (bSpeed == aSpeed && mathrand.Intn(2) == 1) {
+						firstTurnID = pB.ID
+					}
 					r.PvPBouts = append(r.PvPBouts, PvPBout{
-						BoutNumber: boutNum,
-						PlayerAID:  pA.ID,
-						PlayerBID:  pB.ID,
+						BoutNumber:          boutNum,
+						PlayerAID:           pA.ID,
+						PlayerBID:           pB.ID,
+						CurrentTurnPlayerID: firstTurnID,
 					})
 					boutNum++
 				}
@@ -84,80 +88,58 @@ func (m *Manager) advancePvPBoutsLocked(r *room) {
 			m.restoreFighterForBout(pA)
 			m.restoreFighterForBout(pB)
 			tag := fmt.Sprintf("🔔 คู่ที่ %d/%d", bout.BoutNumber, len(r.PvPBouts))
-			if bout.IsTiebreaker {
-				tag = "⚡ รอบตัดสิน Sudden-Death Tiebreaker"
-			}
 			m.appendPvPLog(r, fmt.Sprintf("%s: %s ปะทะ %s (HP/MP ฟื้นฟูเต็ม 100%%)", tag, pA.Name, pB.Name))
+		}
+		if bout.CurrentTurnPlayerID == "" {
+			bout.CurrentTurnPlayerID = bout.PlayerAID
 		}
 		if pA.IsBot && pB.IsBot {
 			m.simulateBotVsBotBoutLocked(r, bout, pA, pB)
 			r.CurrentBoutIdx++
 			continue
 		}
+		// Bots take their turn automatically, including when a bot is Player A.
+		for {
+			bot := findPlayer(r, bout.CurrentTurnPlayerID)
+			if bot == nil || !bot.IsBot {
+				break
+			}
+			opponent := pA
+			if bot.ID == pA.ID {
+				opponent = pB
+			}
+			m.executeBotBoutTurnLocked(r, bout, bot, opponent)
+			bout.Turns++
+			if opponent.State.HP <= 0 {
+				m.recordBoutWinLocked(r, bout, bot, opponent)
+				r.CurrentBoutIdx++
+				break
+			}
+			bout.CurrentTurnPlayerID = opponent.ID
+		}
+		if bout.Finished {
+			continue
+		}
 		// Active bout involves at least one human player
 		return
 	}
-
-	// All scheduled bouts finished: check if top players are tied on PvPWins and need a Sudden-Death Tiebreaker
-	if !r.TiebreakerPlayed && len(r.Players) >= 2 {
-		tied := m.findTopTiedPlayersLocked(r)
-		if len(tied) >= 2 {
-			r.TiebreakerPlayed = true
-			pA := tied[0]
-			pB := tied[1]
-			tieBout := PvPBout{
-				BoutNumber:   len(r.PvPBouts) + 1,
-				PlayerAID:    pA.ID,
-				PlayerBID:    pB.ID,
-				IsTiebreaker: true,
-			}
-			r.PvPBouts = append(r.PvPBouts, tieBout)
-			m.appendPvPLog(r, fmt.Sprintf("🔥 คะแนนชนะเท่ากัน! เปิดศึกตัดสิน Sudden-Death Tiebreaker ระหว่าง %s และ %s!", pA.Name, pB.Name))
-			m.advancePvPBoutsLocked(r)
-			return
-		}
-	}
-
+	// All scheduled round-robin bouts are complete; calculate the final standings.
 	m.finishPvPLocked(r)
 }
 
-func (m *Manager) findTopTiedPlayersLocked(r *room) []*player {
-	maxWins := -1
-	for _, p := range r.Players {
-		if p.PvPWins > maxWins {
-			maxWins = p.PvPWins
-		}
-	}
-	if maxWins <= 0 && len(r.Players) == 2 {
-		return nil
-	}
-	var top []*player
-	for _, p := range r.Players {
-		if p.PvPWins == maxWins {
-			top = append(top, p)
-		}
-	}
-	if len(top) < 2 {
-		return nil
-	}
-	return top
-}
-
 func (m *Manager) simulateBotVsBotBoutLocked(r *room, bout *PvPBout, pA, pB *player) {
-	for step := 0; step < 30 && pA.State.HP > 0 && pB.State.HP > 0; step++ {
+	for pA.State.HP > 0 && pB.State.HP > 0 {
+		actor, opponent := pA, pB
+		if bout.CurrentTurnPlayerID == pB.ID {
+			actor, opponent = pB, pA
+		}
+		m.executeBotBoutTurnLocked(r, bout, actor, opponent)
 		bout.Turns++
-		m.executeBotBoutTurnLocked(r, bout, pA, pB)
-		if pB.State.HP <= 0 {
-			break
+		if opponent.State.HP <= 0 {
+			m.recordBoutWinLocked(r, bout, actor, opponent)
+			return
 		}
-		m.executeBotBoutTurnLocked(r, bout, pB, pA)
-	}
-	if !bout.Finished {
-		winner, loser := pA, pB
-		if pB.State.HP > pA.State.HP {
-			winner, loser = pB, pA
-		}
-		m.recordBoutWinLocked(r, bout, winner, loser)
+		bout.CurrentTurnPlayerID = opponent.ID
 	}
 }
 
@@ -274,6 +256,9 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 		r.Version++
 		m.broadcastSnapshotsLocked(r)
 		return nil
+	}
+	if bout.CurrentTurnPlayerID != playerID {
+		return errors.New("PVP_NOT_YOUR_TURN")
 	}
 	target := m.resolveBoutOpponentLocked(r, bout, p, targetID)
 	if target == nil || target.State == nil {
@@ -408,28 +393,24 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 		m.recordBoutWinLocked(r, bout, target, p)
 		r.CurrentBoutIdx++
 		m.advancePvPBoutsLocked(r)
-	} else if target.IsBot {
-		// Bot immediately takes its counter-turn in the current bout
-		m.executeBotBoutTurnLocked(r, bout, target, p)
-		if p.State.HP <= 0 {
-			m.recordBoutWinLocked(r, bout, target, p)
-			r.CurrentBoutIdx++
-			m.advancePvPBoutsLocked(r)
-		} else if target.State.HP <= 0 {
-			m.recordBoutWinLocked(r, bout, p, target)
-			r.CurrentBoutIdx++
-			m.advancePvPBoutsLocked(r)
+	} else {
+		bout.CurrentTurnPlayerID = target.ID
+		if target.IsBot {
+			// The bot answers immediately, then the turn returns to the human.
+			m.executeBotBoutTurnLocked(r, bout, target, p)
+			bout.Turns++
+			if p.State.HP <= 0 {
+				m.recordBoutWinLocked(r, bout, target, p)
+				r.CurrentBoutIdx++
+				m.advancePvPBoutsLocked(r)
+			} else if target.State.HP <= 0 {
+				m.recordBoutWinLocked(r, bout, p, target)
+				r.CurrentBoutIdx++
+				m.advancePvPBoutsLocked(r)
+			} else {
+				bout.CurrentTurnPlayerID = p.ID
+			}
 		}
-	} else if bout.Turns >= 10 {
-		// Sudden-Death Arena Storm after 10 actions in a human-vs-human bout without KO
-		winner, loser := p, target
-		if target.State.HP > p.State.HP || (target.State.HP == p.State.HP && target.State.Score > p.State.Score) {
-			winner, loser = target, p
-		}
-		m.appendPvPLog(r, fmt.Sprintf("⚡ พายุสายฟ้า Sudden-Death ผ่าลงกลางสังเวียน! %s เป็นฝ่ายชนะในคู่นี้!", winner.Name))
-		m.recordBoutWinLocked(r, bout, winner, loser)
-		r.CurrentBoutIdx++
-		m.advancePvPBoutsLocked(r)
 	}
 
 	r.Version++
@@ -505,17 +486,16 @@ func (m *Manager) executeBotBoutTurnLocked(r *room, bout *PvPBout, bot, opponent
 	m.appendPvPLog(r, fmt.Sprintf("⚔️ %s โจมตีสวนกลับ %s สร้างความเสียหาย %d หน่วย", bot.Name, opponent.Name, dealt))
 }
 
-func (m *Manager) pvpStatusForPlayer(r *room, playerID string) (oppID string, boutNum int, totalBouts int, isTiebreaker bool) {
+func (m *Manager) pvpStatusForPlayer(r *room, playerID string) (oppID string, boutNum int, totalBouts int) {
 	if r == nil || len(r.PvPBouts) == 0 {
-		return "", 0, 0, false
+		return "", 0, 0
 	}
 	totalBouts = len(r.PvPBouts)
 	bout := m.currentBoutLocked(r)
 	if bout == nil {
-		return "", totalBouts, totalBouts, false
+		return "", totalBouts, totalBouts
 	}
 	boutNum = bout.BoutNumber
-	isTiebreaker = bout.IsTiebreaker
 	if bout.PlayerAID == playerID {
 		oppID = bout.PlayerBID
 	} else if bout.PlayerBID == playerID {
@@ -523,7 +503,7 @@ func (m *Manager) pvpStatusForPlayer(r *room, playerID string) (oppID string, bo
 	} else {
 		oppID = bout.PlayerBID
 	}
-	return oppID, boutNum, totalBouts, isTiebreaker
+	return oppID, boutNum, totalBouts
 }
 
 func (m *Manager) pvpBoutViews(r *room) []PvPBoutView {
@@ -546,15 +526,14 @@ func (m *Manager) pvpBoutViews(r *room) []PvPBoutView {
 			wName = w.Name
 		}
 		views = append(views, PvPBoutView{
-			BoutNumber:   b.BoutNumber,
-			PlayerAID:    b.PlayerAID,
-			PlayerAName:  aName,
-			PlayerBID:    b.PlayerBID,
-			PlayerBName:  bName,
-			WinnerID:     b.WinnerID,
-			WinnerName:   wName,
-			IsTiebreaker: b.IsTiebreaker,
-			Finished:     b.Finished,
+			BoutNumber:  b.BoutNumber,
+			PlayerAID:   b.PlayerAID,
+			PlayerAName: aName,
+			PlayerBID:   b.PlayerBID,
+			PlayerBName: bName,
+			WinnerID:    b.WinnerID,
+			WinnerName:  wName,
+			Finished:    b.Finished,
 		})
 	}
 	return views
@@ -572,7 +551,7 @@ func (m *Manager) recordScoreEvent(r *room, event ScoreEvent) bool {
 	return true
 }
 
-func (m *Manager) allPvPActionsUsed(r *room) bool {
+func (m *Manager) allPvPBoutsFinished(r *room) bool {
 	if len(r.Players) == 0 {
 		return false
 	}

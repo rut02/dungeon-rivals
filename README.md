@@ -31,9 +31,9 @@ Open `http://localhost:5173`. The frontend proxies API and WebSocket traffic to 
 1. Create or join a room, ready up, and let the host start the match.
 2. Each player explores a private, branching three-floor dungeon. Combat, treasure, shops, events, rest rooms, respawn, and checkpoints resolve independently per player.
 3. After clearing the final boss, review equipment and ready for the Arena. The server restores HP and starts PvP when every remaining player is ready.
-4. Each player gets five Arena actions. Final ranking uses PvE score, PvP score, Gold conversion, bonuses, and penalties. Results can be downloaded as CSV.
+4. Players fight each scheduled opponent in a round-robin Arena. Turns alternate, each bout ends when a fighter reaches 0 HP, and final ranking is calculated after every bout is complete. Ranking uses PvE score, PvP score, Gold conversion, bonuses, and penalties. Results can be downloaded as CSV.
 
-The final art pass adds original SVG artwork for the entrance and room icons in `frontend/public/art/`. The game uses static illustrations and icons, without 3D models or animation.
+The final art pass adds original 64-bit Dark Fantasy Pixel Artwork for characters, equipment, monsters, and covers in `frontend/public/art/pixel/` and `frontend/public/art/`. See [docs/HOWTO_PROCEDURAL_PIXEL_ART.md](docs/HOWTO_PROCEDURAL_PIXEL_ART.md) for the procedural sprite generation guide and tools.
 
 ## Static data and configuration
 

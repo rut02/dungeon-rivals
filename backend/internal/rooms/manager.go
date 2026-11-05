@@ -59,45 +59,43 @@ type Preview struct {
 }
 
 type PlayerSnapshot struct {
-	PlayerID            string `json:"player_id"`
-	Name                string `json:"name"`
-	IsHost              bool   `json:"is_host"`
-	Ready               bool   `json:"ready"`
-	Connected           bool   `json:"connected"`
-	Kit                 string `json:"kit"`
-	IsBot               bool   `json:"is_bot"`
-	BotDifficulty       string `json:"bot_difficulty,omitempty"`
-	Stage               string `json:"stage"`
-	Floor               int    `json:"floor"`
-	Progress            int    `json:"progress"`
-	Score               int    `json:"score"`
-	Completed           bool   `json:"completed"`
-	HP                  int    `json:"hp"`
-	MaxHP               int    `json:"max_hp"`
-	MP                  int    `json:"mp"`
-	MaxMP               int    `json:"max_mp"`
-	ATK                 int    `json:"atk"`
-	DEF                 int    `json:"def"`
-	SPD                 int    `json:"spd"`
-	WeaponSkill         string `json:"weapon_skill,omitempty"`
-	PvPActionsRemaining int    `json:"pvp_actions_remaining"`
-	PvPScore            int    `json:"pvp_score"`
-	PvPDamage           int    `json:"pvp_damage"`
-	PvPKnockouts        int    `json:"pvp_knockouts"`
-	PvPWins             int    `json:"pvp_wins"`
-	PvPLosses           int    `json:"pvp_losses"`
+	PlayerID      string `json:"player_id"`
+	Name          string `json:"name"`
+	IsHost        bool   `json:"is_host"`
+	Ready         bool   `json:"ready"`
+	Connected     bool   `json:"connected"`
+	Kit           string `json:"kit"`
+	IsBot         bool   `json:"is_bot"`
+	BotDifficulty string `json:"bot_difficulty,omitempty"`
+	Stage         string `json:"stage"`
+	Floor         int    `json:"floor"`
+	Progress      int    `json:"progress"`
+	Score         int    `json:"score"`
+	Completed     bool   `json:"completed"`
+	HP            int    `json:"hp"`
+	MaxHP         int    `json:"max_hp"`
+	MP            int    `json:"mp"`
+	MaxMP         int    `json:"max_mp"`
+	ATK           int    `json:"atk"`
+	DEF           int    `json:"def"`
+	SPD           int    `json:"spd"`
+	WeaponSkill   string `json:"weapon_skill,omitempty"`
+	PvPScore      int    `json:"pvp_score"`
+	PvPDamage     int    `json:"pvp_damage"`
+	PvPKnockouts  int    `json:"pvp_knockouts"`
+	PvPWins       int    `json:"pvp_wins"`
+	PvPLosses     int    `json:"pvp_losses"`
 }
 
 type PvPBoutView struct {
-	BoutNumber   int    `json:"bout_number"`
-	PlayerAID    string `json:"player_a_id"`
-	PlayerAName  string `json:"player_a_name"`
-	PlayerBID    string `json:"player_b_id"`
-	PlayerBName  string `json:"player_b_name"`
-	WinnerID     string `json:"winner_id,omitempty"`
-	WinnerName   string `json:"winner_name,omitempty"`
-	IsTiebreaker bool   `json:"is_tiebreaker,omitempty"`
-	Finished     bool   `json:"finished"`
+	BoutNumber  int    `json:"bout_number"`
+	PlayerAID   string `json:"player_a_id"`
+	PlayerAName string `json:"player_a_name"`
+	PlayerBID   string `json:"player_b_id"`
+	PlayerBName string `json:"player_b_name"`
+	WinnerID    string `json:"winner_id,omitempty"`
+	WinnerName  string `json:"winner_name,omitempty"`
+	Finished    bool   `json:"finished"`
 }
 
 type Snapshot struct {
@@ -136,7 +134,8 @@ type PrivateSnapshot struct {
 	LastAcquiredItemID   string               `json:"last_acquired_item_id,omitempty"`
 	LastAcquiredSeq      int                  `json:"last_acquired_seq,omitempty"`
 	PvPActionsUsed       int                  `json:"pvp_actions_used,omitempty"`
-	PvPActionsRemaining  int                  `json:"pvp_actions_remaining,omitempty"`
+	PvPCurrentTurnID     string               `json:"pvp_current_turn_player_id,omitempty"`
+	PvPYourTurn          bool                 `json:"pvp_your_turn,omitempty"`
 	PvPScore             int                  `json:"pvp_score,omitempty"`
 	PvPDamage            int                  `json:"pvp_damage,omitempty"`
 	PvPKnockouts         int                  `json:"pvp_knockouts,omitempty"`
@@ -145,7 +144,6 @@ type PrivateSnapshot struct {
 	PvPCurrentOpponentID string               `json:"pvp_current_opponent_id,omitempty"`
 	PvPBoutNumber        int                  `json:"pvp_bout_number,omitempty"`
 	PvPTotalBouts        int                  `json:"pvp_total_bouts,omitempty"`
-	PvPIsTiebreaker      bool                 `json:"pvp_is_tiebreaker,omitempty"`
 	PvPLog               []string             `json:"pvp_log,omitempty"`
 	PvPBouts             []PvPBoutView        `json:"pvp_bouts,omitempty"`
 }
@@ -215,13 +213,13 @@ func (p *player) recordAcquiredItem(itemID string) {
 }
 
 type PvPBout struct {
-	BoutNumber   int
-	PlayerAID    string
-	PlayerBID    string
-	WinnerID     string
-	Turns        int
-	IsTiebreaker bool
-	Finished     bool
+	BoutNumber          int
+	PlayerAID           string
+	PlayerBID           string
+	WinnerID            string
+	Turns               int
+	CurrentTurnPlayerID string
+	Finished            bool
 }
 
 type room struct {
@@ -233,7 +231,6 @@ type room struct {
 	ScoreEvents         []ScoreEvent
 	PvPBouts            []PvPBout
 	CurrentBoutIdx      int
-	TiebreakerPlayed    bool
 	PvPLog              []string
 }
 
@@ -367,7 +364,9 @@ func (m *Manager) Ready(r *room, playerID string, ready bool) error {
 	return nil
 }
 
-func (m *Manager) setReady(r *room, playerID string, ready bool) error { return m.Ready(r, playerID, ready) }
+func (m *Manager) setReady(r *room, playerID string, ready bool) error {
+	return m.Ready(r, playerID, ready)
+}
 func (m *Manager) start(r *room, playerID string) error { return m.Start(r, playerID) }
 
 func (m *Manager) selectKit(r *room, playerID, kit string) error {
@@ -515,7 +514,7 @@ func (m *Manager) disconnect(r *room, playerID string, conn interface{ WriteJSON
 			} else if r.Phase == "dungeon" || r.Phase == "preparation" {
 				m.maybePreparation(r)
 			} else if r.Phase == "pvp" {
-				if m.allPvPActionsUsed(r) {
+				if m.allPvPBoutsFinished(r) {
 					m.finishPvPLocked(r)
 				}
 			}
@@ -550,13 +549,18 @@ func (m *Manager) snapshotLocked(r *room, meID string) Snapshot {
 		if p.ID == meID {
 			me = SelfSnapshot{PlayerID: p.ID, Name: p.Name, Ready: p.Ready, Connected: p.Connected, Kit: p.Kit, IsBot: p.IsBot, IsHost: p.ID == r.HostID}
 			if p.State != nil {
-				oppID, boutNum, totalBouts, isTie := m.pvpStatusForPlayer(r, p.ID)
+				oppID, boutNum, totalBouts := m.pvpStatusForPlayer(r, p.ID)
+				currentTurnID := ""
+				if bout := m.currentBoutLocked(r); bout != nil {
+					currentTurnID = bout.CurrentTurnPlayerID
+				}
 				private := PrivateSnapshot{
 					PrivateSnapshot:      p.State.Snapshot(m.catalog),
 					LastAcquiredItemID:   p.LastAcquiredItemID,
 					LastAcquiredSeq:      p.LastAcquiredSeq,
 					PvPActionsUsed:       p.PvPActionsUsed,
-					PvPActionsRemaining:  99,
+					PvPCurrentTurnID:     currentTurnID,
+					PvPYourTurn:          currentTurnID == p.ID,
 					PvPScore:             p.PvPScore,
 					PvPDamage:            p.PvPDamage,
 					PvPKnockouts:         p.PvPKnockouts,
@@ -565,7 +569,6 @@ func (m *Manager) snapshotLocked(r *room, meID string) Snapshot {
 					PvPCurrentOpponentID: oppID,
 					PvPBoutNumber:        boutNum,
 					PvPTotalBouts:        totalBouts,
-					PvPIsTiebreaker:      isTie,
 					PvPLog:               append([]string(nil), r.PvPLog...),
 					PvPBouts:             m.pvpBoutViews(r),
 				}
@@ -623,7 +626,6 @@ func snapshotPlayer(p *player, host bool) PlayerSnapshot {
 		view.Score = p.State.Score
 		view.HP = p.State.HP
 	}
-	view.PvPActionsRemaining = 99
 	view.PvPScore = p.PvPScore
 	view.PvPDamage = p.PvPDamage
 	view.PvPKnockouts = p.PvPKnockouts
@@ -817,7 +819,6 @@ func (m *Manager) restartLobby(r *room, playerID string) error {
 	r.ScoreEventIDs = make(map[string]struct{})
 	r.PvPBouts = nil
 	r.CurrentBoutIdx = 0
-	r.TiebreakerPlayed = false
 	r.PvPLog = nil
 	for _, p := range r.Players {
 		p.Ready = false
@@ -1524,7 +1525,7 @@ func (m *Manager) leave(r *room, playerID string, conn interface{ WriteJSON(any)
 		} else if r.Phase == "dungeon" || r.Phase == "preparation" {
 			m.maybePreparation(r)
 		} else if r.Phase == "pvp" {
-			if m.allPvPActionsUsed(r) {
+			if m.allPvPBoutsFinished(r) {
 				m.finishPvPLocked(r)
 			}
 		}

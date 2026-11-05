@@ -40,13 +40,25 @@
   flex-shrink: 0;
 }
 
-.hud-avatar-frame img {
-  width: 54px;
-  height: 54px;
-  max-width: 54px;
-  max-height: 54px;
+.hud-avatar-inner {
+  width: 58px;
+  height: 58px;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-avatar-frame img,
+.hud-avatar-img {
+  width: 52px !important;
+  height: 52px !important;
+  max-width: 52px !important;
+  max-height: 52px !important;
   object-fit: contain;
   image-rendering: pixelated;
+  image-rendering: crisp-edges;
   display: block;
 }
 
@@ -130,11 +142,66 @@
 }
 
 .hud-meter-track {
-  height: 12px;
+  position: relative;
+  height: 14px;
   background: #13101a;
   border: 1px solid #433a52;
   border-radius: 999px;
   overflow: hidden;
+}
+
+.hud-meter-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.hud-meter-track.hp-track i.hud-actual-meter,
+.hud-meter-track.hp-track i:not(.hud-ghost-meter),
+.hp-track i {
+  background: linear-gradient(90deg, #d63031, #ff7675);
+  box-shadow: 0 0 10px rgba(255, 118, 117, 0.5);
+}
+
+.hud-meter-track.mp-track i.hud-actual-meter,
+.hud-meter-track.mp-track i:not(.hud-ghost-meter),
+.mp-track i {
+  background: linear-gradient(90deg, #0984e3, #74b9ff);
+  box-shadow: 0 0 10px rgba(116, 185, 255, 0.5);
+}
+
+.hud-ghost-meter {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 1;
+  transition: width 0.2s ease;
+}
+
+.hud-ghost-meter.ghost-hp {
+  background: linear-gradient(90deg, rgba(46, 213, 115, 0.45), rgba(123, 237, 159, 0.8));
+  box-shadow: 0 0 10px rgba(46, 213, 115, 0.6);
+  animation: ghostPulse 1s ease-in-out infinite alternate;
+}
+
+.hud-ghost-meter.ghost-mp {
+  background: linear-gradient(90deg, rgba(0, 180, 255, 0.45), rgba(130, 204, 221, 0.8));
+  box-shadow: 0 0 10px rgba(0, 180, 255, 0.6);
+  animation: ghostPulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes ghostPulse {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+
+.hud-actual-meter {
+  position: relative;
+  z-index: 2;
 }
 
 .hud-meter-fill {
@@ -182,6 +249,19 @@
 .hud-stat-pill.gold {
   border-color: #8c6e37;
   background: rgba(54, 41, 22, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+}
+
+.hud-gold-coin-art {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
 .hud-stat-pill.gold strong {
@@ -429,23 +509,75 @@
 }
 
 .equipment-cell {
-  display: grid;
-  gap: 10px;
-  min-height: 120px;
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 162px;
+  min-height: 162px;
+  max-height: 162px;
+  box-sizing: border-box;
+  padding: 12px 14px;
   background: #181522;
   border: 1px solid #473e58;
   border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
+.equipment-cell.is-equipped,
 .equipment-cell.has-item {
   border-color: #7c669e;
   background: linear-gradient(180deg, rgba(45, 36, 63, 0.7) 0%, rgba(23, 19, 33, 0.9) 100%);
 }
 
+.equipment-cell .slot-title {
+  font-size: 11px;
+  color: #b4abc4;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+}
+
+.equipment-cell .empty-slot-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: #635b75;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1.5px dashed #3a3248;
+  border-radius: 8px;
+  margin: 8px 0;
+  background: rgba(18, 15, 25, 0.5);
+}
+
+.equipment-cell .equipped-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.equipment-cell .equip-stats-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 11px;
+  color: #c2b8d4;
+  line-height: 1.35;
+}
+
 .equipment-cell strong {
-  font-size: 15px;
+  font-size: 14px;
   color: #f7f3fc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .equipment-cell small {

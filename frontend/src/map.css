@@ -148,8 +148,19 @@
 }
 
 .map-edge.is-hovered {
-  stroke-width: 4.2px;
+  stroke-width: 4.4px;
+  stroke: #ffda79;
   opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(255, 218, 121, 0.7));
+}
+
+.map-edge.is-outgoing-highlight {
+  stroke: #ffd166 !important;
+  stroke-width: 4.8px !important;
+  opacity: 1 !important;
+  stroke-dasharray: none !important;
+  filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.95)) !important;
+  z-index: 10;
 }
 
 .map-edge-dot.map-edge-available {
@@ -373,10 +384,11 @@
 
 .health-track {
   grid-column: 1 / -1;
-  height: 10px;
+  height: 11px;
   background: #292533;
   border-radius: 99px;
   overflow: hidden;
+  position: relative;
 }
 
 .health-track i {
@@ -384,6 +396,47 @@
   height: 100%;
   background: linear-gradient(90deg, #b83b48, #ff6b6b);
   transition: width 0.2s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.enemy-ghost-damage {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  height: 100% !important;
+  background: #ffa8a8 !important;
+  opacity: 0.6;
+  border-radius: 99px;
+  z-index: 1 !important;
+  animation: ghostDmgPulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes ghostDmgPulse {
+  from { opacity: 0.45; }
+  to { opacity: 0.85; }
+}
+
+.predicted-damage-chip {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, rgba(235, 77, 75, 0.95), rgba(184, 59, 72, 0.95));
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #ff7979;
+  box-shadow: 0 4px 12px rgba(235, 77, 75, 0.5);
+  animation: pulseChip 0.8s ease-in-out infinite alternate;
+  z-index: 10;
+  pointer-events: none;
+}
+
+@keyframes pulseChip {
+  from { transform: scale(0.96); box-shadow: 0 2px 8px rgba(235, 77, 75, 0.4); }
+  to { transform: scale(1.04); box-shadow: 0 4px 16px rgba(255, 121, 121, 0.8); }
 }
 
 .combat-log {

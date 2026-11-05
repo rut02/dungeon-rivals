@@ -26,7 +26,7 @@ body {
     radial-gradient(ellipse at 15% 46%, #26213a 0, transparent 48%),
     radial-gradient(ellipse at 90% 10%, #1b2232 0, transparent 40%),
     #111019;
-  font-size: 16px;
+  font-size: 16.5px;
 }
 
 button, input, select {
@@ -34,7 +34,7 @@ button, input, select {
 }
 
 .shell {
-  width: min(1520px, calc(100% - 32px));
+  width: min(1560px, calc(100% - 24px));
   margin: 0 auto;
   min-height: 100vh;
   display: flex;
@@ -46,7 +46,7 @@ button, input, select {
 }
 
 .game-shell {
-  max-width: 1520px;
+  max-width: 1560px;
 }
 
 .topbar {

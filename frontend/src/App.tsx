@@ -426,6 +426,7 @@ function AppContent() {
   const [sparkleItem, setSparkleItem] = useState<{ itemId: string; seq: number } | null>(null)
   const [seenAcquireSeq, setSeenAcquireSeq] = useState<number>(0)
   const [inspectedItemId, setInspectedItemId] = useState<string | null>(null)
+  const [previewHeal, setPreviewHeal] = useState<{ hp: number; mp: number }>({ hp: 0, mp: 0 })
   const inspectedItem = useMemo(() => itemCatalog.find((it) => it.id === inspectedItemId) || null, [itemCatalog, inspectedItemId])
 
   useEffect(() => {
@@ -498,9 +499,9 @@ function AppContent() {
     const itemId = snapshot?.me?.private?.last_acquired_item_id || ''
     if (seq > seenAcquireSeq && itemId) {
       setSeenAcquireSeq(seq)
-      // When winning combat, center victory modal already showcases the loot; suppress bottom popup
-      const isCombatVictory = Boolean(snapshot?.me?.private?.combat?.finished && snapshot?.me?.private?.combat?.victory)
-      if (!isCombatVictory) {
+      // When in combat or when combat finished (victory modal open), center victory modal already showcases the loot; suppress bottom popup
+      const inOrFinishedCombat = Boolean(snapshot?.me?.private?.combat)
+      if (!inOrFinishedCombat) {
         setSparkleItem({ itemId, seq })
         sound.playLevelUp()
         const timer = window.setTimeout(() => {
@@ -509,7 +510,7 @@ function AppContent() {
         return () => window.clearTimeout(timer)
       }
     }
-  }, [snapshot?.me?.private?.last_acquired_seq, snapshot?.me?.private?.last_acquired_item_id, seenAcquireSeq, snapshot?.me?.private?.combat?.finished, snapshot?.me?.private?.combat?.victory])
+  }, [snapshot?.me?.private?.last_acquired_seq, snapshot?.me?.private?.last_acquired_item_id, seenAcquireSeq, snapshot?.me?.private?.combat])
 
   // Keyboard shortcut 'b' or 'i' to toggle bag when allowed
   useEffect(() => {
@@ -632,6 +633,7 @@ function AppContent() {
           myId={session.player_id}
           canOpenBag={canOpenBag}
           onOpenBag={() => canOpenBag && setShowBag(true)}
+          previewHeal={previewHeal}
         />
       )}
 
@@ -839,6 +841,7 @@ function AppContent() {
               catalog={itemCatalog}
               onCommand={command}
               onOpenBag={() => setShowBag(true)}
+              onPreviewHeal={setPreviewHeal}
             />
           )}
 
@@ -899,7 +902,7 @@ function AppContent() {
       )}
 
       {/* SPARKLE ITEM PICKUP ANIMATION POPUP ("วิ้ง! ได้รับไอเทมใหม่") */}
-      {sparkleItem && !snapshot?.me?.private?.combat?.finished && (
+      {sparkleItem && !snapshot?.me?.private?.combat && (
         <SparkleItemPopup
           itemId={sparkleItem.itemId}
           catalog={itemCatalog}
@@ -926,6 +929,7 @@ function AppContent() {
               onClose={() => setShowBag(false)}
               inCombat={Boolean(privateState.combat && !privateState.combat.finished)}
               onInspectItem={(id) => setInspectedItemId(id)}
+              onPreviewHeal={setPreviewHeal}
             />
           </div>
         </div>
@@ -1134,16 +1138,30 @@ function HeroHudBar({
   myId,
   canOpenBag,
   onOpenBag,
+  previewHeal,
 }: {
   state: PrivateState
   players: PublicPlayer[]
   myId: string
   canOpenBag: boolean
   onOpenBag: () => void
+  previewHeal?: { hp: number; mp: number }
 }) {
-  const hpPct = state.stats.max_hp ? Math.min(100, Math.max(0, Math.round((state.stats.hp / state.stats.max_hp) * 100))) : 0
-  const mpPct = state.stats.max_mp ? Math.min(100, Math.max(0, Math.round(((state.stats.mp || 0) / state.stats.max_mp) * 100))) : 0
+  const maxHp = state.stats.max_hp || 1
+  const currentHp = state.stats.hp
+  const hpPct = Math.min(100, Math.max(0, Math.round((currentHp / maxHp) * 100)))
+
+  const maxMp = state.stats.max_mp || 20
+  const currentMp = state.stats.mp || 0
+  const mpPct = Math.min(100, Math.max(0, Math.round((currentMp / maxMp) * 100)))
+
   const expPct = state.stats.max_exp ? Math.min(100, Math.max(0, Math.round(((state.stats.exp || 0) / state.stats.max_exp) * 100))) : 0
+
+  const ghostHp = previewHeal?.hp ? Math.min(maxHp, currentHp + previewHeal.hp) : currentHp
+  const ghostHpPct = Math.min(100, Math.max(0, Math.round((ghostHp / maxHp) * 100)))
+
+  const ghostMp = previewHeal?.mp ? Math.min(maxMp, currentMp + previewHeal.mp) : currentMp
+  const ghostMpPct = Math.min(100, Math.max(0, Math.round((ghostMp / maxMp) * 100)))
 
   const archetypeNames: Record<string, string> = {
     sword: '🛡️ อัศวินดาบ & โล่',
@@ -1157,7 +1175,9 @@ function HeroHudBar({
       <div className="hud-main-row">
         <div className="hud-hero-identity">
           <div className="hud-avatar-frame">
-            <img src="/art/pixel/hero.png" alt="Hero" />
+            <div className="hud-avatar-inner">
+              <img src="/art/pixel/hero.png" alt="Hero" className="hud-avatar-img" width={52} height={52} />
+            </div>
             <span className="hud-level-badge">Lv.{state.stats.level || 1}</span>
           </div>
           <div className="hud-hero-meta">
@@ -1176,7 +1196,10 @@ function HeroHudBar({
               <strong>{state.stats.hp} / {state.stats.max_hp}</strong>
             </div>
             <div className="hud-meter-track hp-track">
-              <i style={{ width: `${hpPct}%` }} />
+              {ghostHpPct > hpPct && (
+                <i className="hud-ghost-meter ghost-hp" style={{ width: `${ghostHpPct}%` }} />
+              )}
+              <i className="hud-actual-meter" style={{ width: `${hpPct}%` }} />
             </div>
           </div>
 
@@ -1186,7 +1209,10 @@ function HeroHudBar({
               <strong>{state.stats.mp || 0} / {state.stats.max_mp || 20}</strong>
             </div>
             <div className="hud-meter-track mp-track">
-              <i style={{ width: `${mpPct}%` }} />
+              {ghostMpPct > mpPct && (
+                <i className="hud-ghost-meter ghost-mp" style={{ width: `${ghostMpPct}%` }} />
+              )}
+              <i className="hud-actual-meter" style={{ width: `${mpPct}%` }} />
             </div>
           </div>
         </div>
@@ -1195,7 +1221,13 @@ function HeroHudBar({
           <div className="hud-stat-pill"><span>ATK</span><strong>⚔️ {state.stats.atk}</strong></div>
           <div className="hud-stat-pill"><span>DEF</span><strong>🛡️ {state.stats.def}</strong></div>
           <div className="hud-stat-pill"><span>SPD</span><strong>⚡ {state.stats.spd || state.stats.base_spd || 5}</strong></div>
-          <div className="hud-stat-pill gold"><span>GOLD</span><strong>◈ {state.gold}</strong></div>
+          <div className="hud-stat-pill gold">
+            <img src="/art/pixel/gold_coin.png" alt="Gold" className="hud-gold-coin-art" />
+            <div>
+              <span>GOLD</span>
+              <strong>{state.gold}</strong>
+            </div>
+          </div>
           <div className="hud-stat-pill score"><span>SCORE</span><strong>★ {state.score}</strong></div>
         </div>
 
@@ -1756,11 +1788,13 @@ function CombatPanel({
   catalog,
   onCommand,
   onOpenBag,
+  onPreviewHeal,
 }: {
   state: PrivateState
   catalog: ItemDefinition[]
   onCommand: (type: string, payload?: object) => void
   onOpenBag: () => void
+  onPreviewHeal?: (preview: { hp: number; mp: number }) => void
 }) {
   const combat = state.combat!
   const potions = state.inventory.filter((stack) => catalog.find((item) => item.id === stack.item_id)?.type === 'consumable' && catalog.find((item) => item.id === stack.item_id)?.usable_in_combat)
@@ -1768,6 +1802,7 @@ function CombatPanel({
   const [selectedTarget, setSelectedTarget] = useState<number>(combat.selected_enemy ?? 0)
   const [vfxList, setVfxList] = useState<VFX[]>([])
   const [shake, setShake] = useState(false)
+  const [hoveredAction, setHoveredAction] = useState<{ type: 'ATTACK' | 'SKILL' | 'FIRE_BOMB'; isAoE: boolean } | null>(null)
   const combatLogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -1802,6 +1837,37 @@ function CombatPanel({
   const activeTargetEnemy = enemies.find((e) => e.index === selectedTarget && e.alive) || enemies.find((e) => e.alive) || enemies[0]
   const playerSpeed = state.stats.spd || state.stats.base_spd || 5
   const isPlayerFaster = combat.first_strike || (activeTargetEnemy && playerSpeed >= activeTargetEnemy.speed)
+
+  function calculatePredictedDamage(actionType: 'ATTACK' | 'SKILL' | 'FIRE_BOMB', enemy: typeof enemies[0]): number {
+    const stats = state.stats
+    if (actionType === 'FIRE_BOMB') {
+      return 30
+    }
+    if (actionType === 'ATTACK') {
+      if (stats.archetype === 'staff') {
+        const def = Math.floor(enemy.defense * 0.5)
+        return Math.max(1, stats.atk - def)
+      }
+      return Math.max(1, stats.atk - enemy.defense)
+    }
+    if (actionType === 'SKILL') {
+      if (stats.weapon_skill_target === 'aoe') {
+        const def = stats.archetype === 'staff' ? Math.floor(enemy.defense * 0.4) : Math.floor(enemy.defense * 0.7)
+        return Math.max(1, Math.floor(stats.atk * 1.20) - def)
+      }
+      if (stats.archetype === 'sword') {
+        return Math.max(1, Math.floor(stats.atk * 1.35) + stats.def - enemy.defense)
+      }
+      if (stats.archetype === 'daggers') {
+        return Math.max(1, Math.floor(stats.atk * 1.65) - enemy.defense)
+      }
+      if (stats.archetype === 'bow' || stats.archetype === 'staff') {
+        return Math.max(1, Math.floor(stats.atk * 1.45) - Math.floor(enemy.defense / 2))
+      }
+      return Math.max(1, Math.floor(stats.atk * 1.40) + stats.def - enemy.defense)
+    }
+    return 0
+  }
 
   function triggerVFX(type: 'slash' | 'magic' | 'arrow' | 'shield' | 'crit', text?: string, colorClass?: string) {
     const id = Date.now() + Math.random()
@@ -1940,10 +2006,18 @@ function CombatPanel({
         {enemies.map((enemy) => {
           const isSelected = activeTargetEnemy.index === enemy.index
           const isHeavy = enemy.intent === 'HEAVY'
+          const isTargetedByHover = Boolean(hoveredAction && enemy.alive && (
+            hoveredAction.isAoE || enemy.index === activeTargetEnemy.index
+          ))
+          const predictedDmg = isTargetedByHover && hoveredAction ? calculatePredictedDamage(hoveredAction.type, enemy) : 0
+          const remainingHpAfterDmg = Math.max(0, enemy.hp - predictedDmg)
+          const remainingPct = Math.max(0, (remainingHpAfterDmg / (enemy.max_hp || 1)) * 100)
+          const currentPct = Math.max(0, (enemy.hp / (enemy.max_hp || 1)) * 100)
+
           return (
             <div
               key={enemy.index}
-              className={`monster-card enemy-battle-card ${enemy.tier === 'boss' ? 'is-boss-card' : ''} ${isSelected ? 'is-selected' : ''} ${!enemy.alive ? 'is-dead' : ''}`}
+              className={`monster-card enemy-battle-card ${enemy.tier === 'boss' ? 'is-boss-card' : ''} ${isSelected ? 'is-selected' : ''} ${!enemy.alive ? 'is-dead' : ''} ${isTargetedByHover ? 'is-hover-targeted' : ''}`}
               onClick={() => {
                 if (enemy.alive) {
                   setSelectedTarget(enemy.index)
@@ -1952,6 +2026,11 @@ function CombatPanel({
               }}
             >
               {isSelected && enemy.alive && <span className="target-badge">🎯 เป้าหมายหลัก</span>}
+              {isTargetedByHover && predictedDmg > 0 && (
+                <div className="predicted-damage-chip">
+                  💥 -{predictedDmg} HP
+                </div>
+              )}
               <div className="monster-card-header">
                 <span className="monster-name-wrap">{enemy.name}</span>
                 <span className="monster-spd-tag">⚡ SPD {enemy.speed}</span>
@@ -1986,7 +2065,10 @@ function CombatPanel({
                   <strong>{enemy.hp} / {enemy.max_hp}</strong>
                 </div>
                 <div className="health-track">
-                  <i style={{ width: `${Math.max(0, (enemy.hp / (enemy.max_hp || 1)) * 100)}%` }} />
+                  {isTargetedByHover && predictedDmg > 0 && (
+                    <i className="enemy-ghost-damage" style={{ width: `${currentPct}%` }} />
+                  )}
+                  <i style={{ width: `${isTargetedByHover ? remainingPct : currentPct}%` }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#cfc5df', marginTop: '8px', fontWeight: 700 }}>
                   <span>⚔️ ATK {enemy.attack}</span>
@@ -2045,8 +2127,14 @@ function CombatPanel({
       {/* Action Buttons */}
       {!combat.finished && (
         <div className="combat-actions">
-          <button className="button button-primary" onClick={handleAttack}>
+          <button
+            className="button button-primary"
+            onClick={handleAttack}
+            onMouseEnter={() => setHoveredAction({ type: 'ATTACK', isAoE: false })}
+            onMouseLeave={() => setHoveredAction(null)}
+          >
             ⚔️ โจมตีปกติ ({activeTargetEnemy.name})
+            <span className="action-predicted-badge">~{calculatePredictedDamage('ATTACK', activeTargetEnemy)} DMG</span>
           </button>
 
           {state.stats.weapon_skill && (
@@ -2054,6 +2142,8 @@ function CombatPanel({
               className="button skill-button"
               disabled={(state.stats.mp || 0) < (state.stats.weapon_skill_cost || 0) || (combat.skill_cooldown || 0) > 0}
               onClick={handleSkill}
+              onMouseEnter={() => setHoveredAction({ type: 'SKILL', isAoE: state.stats.weapon_skill_target === 'aoe' })}
+              onMouseLeave={() => setHoveredAction(null)}
               title={state.stats.weapon_skill_desc}
             >
               <span>✨ {state.stats.weapon_skill} {state.stats.weapon_skill_target === 'aoe' ? '(หมู่)' : ''}</span>
@@ -2062,6 +2152,7 @@ function CombatPanel({
               ) : (
                 <span className="skill-cost-badge">{state.stats.weapon_skill_cost} MP</span>
               )}
+              <span className="action-predicted-badge">~{calculatePredictedDamage('SKILL', activeTargetEnemy)} DMG</span>
             </button>
           )}
 
@@ -2077,13 +2168,28 @@ function CombatPanel({
                 className={`button ${isBomb ? 'button-gold' : 'button-outline'} button-with-icon`}
                 key={item.item_id}
                 onClick={() => handleUseItem(item.item_id)}
+                onMouseEnter={() => {
+                  if (entry?.effect?.type === 'damage_aoe') {
+                    setHoveredAction({ type: 'FIRE_BOMB', isAoE: true })
+                  } else if (onPreviewHeal) {
+                    if (entry?.effect?.type === 'heal_hp' || entry?.effect?.type === 'heal') {
+                      onPreviewHeal({ hp: entry.effect.value, mp: 0 })
+                    } else if (entry?.effect?.type === 'heal_mp') {
+                      onPreviewHeal({ hp: 0, mp: entry.effect.value })
+                    }
+                  }
+                }}
+                onMouseLeave={() => {
+                  setHoveredAction(null)
+                  if (onPreviewHeal) onPreviewHeal({ hp: 0, mp: 0 })
+                }}
               >
                 <ItemSprite itemId={item.item_id} className="btn-pixel-icon" />
                 {entry?.effect?.type === 'damage_aoe'
                   ? `💣 ปา ${entry.name} (ระเบิดหมู่ 30 ดาเมจ!) ×${item.quantity}`
                   : entry?.effect?.type === 'smoke'
                   ? `💨 ปา ${entry.name} (หนีทันที 100%) ×${item.quantity}`
-                  : `🧪 ใช้ ${entry?.name || item.item_id} (×${item.quantity})`}
+                  : `ใช้ ${entry?.name || item.item_id} (×${item.quantity})`}
               </button>
             )
           })}
@@ -2106,6 +2212,7 @@ function InventoryPanel({
   onClose,
   inCombat,
   onInspectItem,
+  onPreviewHeal,
 }: {
   state: PrivateState
   catalog: ItemDefinition[]
@@ -2113,6 +2220,7 @@ function InventoryPanel({
   onClose?: () => void
   inCombat?: boolean
   onInspectItem?: (itemId: string) => void
+  onPreviewHeal?: (preview: { hp: number; mp: number }) => void
 }) {
   const itemByID = (id: string) => catalog.find((item) => item.id === id)
   const equipped: { slot: string; label: string; itemID: string; index?: number }[] = [
@@ -2274,6 +2382,16 @@ function InventoryPanel({
                       className="button button-outline compact"
                       disabled={!canUse}
                       onClick={() => onCommand('inventory.use', { item_id: item.id })}
+                      onMouseEnter={() => {
+                        if (onPreviewHeal) {
+                          if (item.effect?.type === 'heal') {
+                            onPreviewHeal({ hp: item.effect.value, mp: 0 })
+                          } else if (item.effect?.type === 'heal_mp') {
+                            onPreviewHeal({ hp: 0, mp: item.effect.value })
+                          }
+                        }
+                      }}
+                      onMouseLeave={() => onPreviewHeal && onPreviewHeal({ hp: 0, mp: 0 })}
                     >
                       {canUse ? 'กดใช้' : item.effect?.type === 'damage_aoe' || item.effect?.type === 'smoke' ? 'ใช้ในฉากต่อสู้' : 'HP/MP เต็ม'}
                     </button>
@@ -2333,9 +2451,9 @@ function DungeonMap({
   const maxDepth = depths[depths.length - 1] || 6
 
   // Compute deterministic (x, y) coordinates on a wide canvas for Circular Nodes + Shortcut Arcs
-  const COL_WIDTH = 225
-  const CANVAS_HEIGHT = 580
-  const CANVAS_WIDTH = Math.max(1380, depths.length * COL_WIDTH)
+  const COL_WIDTH = 270
+  const CANVAS_HEIGHT = 650
+  const CANVAS_WIDTH = Math.max(1540, depths.length * COL_WIDTH)
 
   const nodeCoords = useMemo(() => {
     const coords: Record<string, { x: number; y: number; node: DungeonNode }> = {}
@@ -2344,8 +2462,8 @@ function DungeonMap({
       const count = nodesInDepth.length
       const x = colIdx * COL_WIDTH + COL_WIDTH / 2
       nodesInDepth.forEach((node, rowIdx) => {
-        const usableHeight = CANVAS_HEIGHT - 140
-        const y = 85 + ((rowIdx + 1) / (count + 1)) * usableHeight
+        const usableHeight = CANVAS_HEIGHT - 170
+        const y = 95 + ((rowIdx + 1) / (count + 1)) * usableHeight
         coords[node.id] = { x, y, node }
       })
     })
@@ -2436,15 +2554,17 @@ function DungeonMap({
                 (fromNode.status === 'CLEARED' || fromNode.status === 'SKIPPED') &&
                 (toNode.status === 'CLEARED' || toNode.status === 'SKIPPED' || toNode.status === 'IN_PROGRESS')
               const isHoveredEdge = hoveredNodeId === fromNode.id || hoveredNodeId === toNode.id
+              const isOutgoingFromHovered = hoveredNodeId === fromNode.id
               const isPastUnchosen = fromNode.depth <= state.progress && !isNextAvailable && !isClearedEdge
 
-              const x1 = fromPos.x + 38
+              const x1 = fromPos.x + 39
               const y1 = fromPos.y
-              const x2 = toPos.x - 38
+              const x2 = toPos.x - 39
               const y2 = toPos.y
-              const cx1 = x1 + (x2 - x1) * 0.42
-              const cx2 = x1 + (x2 - x1) * 0.58
-              const arcLift = isShortcut ? -52 : 0
+              const dx = x2 - x1
+              const cx1 = x1 + dx * 0.45
+              const cx2 = x1 + dx * 0.55
+              const arcLift = isShortcut ? -80 : 0
               const d = `M ${x1} ${y1} C ${cx1} ${y1 + arcLift}, ${cx2} ${y2 + arcLift}, ${x2} ${y2}`
 
               let edgeClass = isShortcut ? 'map-edge-shortcut' : 'map-edge-future'
@@ -2452,6 +2572,7 @@ function DungeonMap({
               else if (isClearedEdge) edgeClass = 'map-edge-cleared'
               else if (isPastUnchosen) edgeClass = 'map-edge-locked'
               if (isHoveredEdge) edgeClass += ' is-hovered'
+              if (isOutgoingFromHovered) edgeClass += ' is-outgoing-highlight'
 
               return (
                 <g key={`${fromNode.id}->${targetId}`}>
@@ -2505,9 +2626,6 @@ function DungeonMap({
                 <div className="circle-node-orb">
                   <RoomIcon type={node.type} />
                 </div>
-                <div className="circle-node-caption">
-                  <strong>{roomNames[node.type] || node.type}</strong>
-                </div>
               </button>
 
               {/* Floating Node Inspection Tooltip Card on Hover */}
@@ -2516,7 +2634,7 @@ function DungeonMap({
                   className="map-node-tooltip-card"
                   style={{
                     left: `${pos.x}px`,
-                    top: `${pos.y - 58}px`,
+                    top: `${pos.y - 50}px`,
                   }}
                 >
                   <h4>

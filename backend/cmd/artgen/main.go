@@ -283,7 +283,10 @@ var (
 )
 
 func main() {
-	outDir := filepath.Join("..", "frontend", "public", "art", "pixel")
+	outDir := os.Getenv("ART_DIR")
+	if outDir == "" {
+		outDir = filepath.Join("..", "..", "frontend", "public", "art", "pixel")
+	}
 	fmt.Printf("=== 64-bit Dark Fantasy Pixel Art Generator ===\n")
 	fmt.Printf("Output: %s (Format: 256x256 PNG, Transparent Background)\n", outDir)
 
@@ -1153,5 +1156,56 @@ func genItems64(dir string) {
 		s.FillCircle(48, 6, 3, cVoid3)
 		s.AddOutline(cOut)
 		_ = s.SavePNG(filepath.Join(dir, "smoke_bomb.png"), 4)
+	}
+	{
+		// gold_coin (Shiny ancient gold coin medallion with engraved sigil)
+		s := NewSprite64()
+		s.FillCircle(32, 32, 20, cGold0)
+		s.FillCircle(32, 32, 18, cGold2)
+		s.FillCircle(30, 30, 16, cGold3)
+		// Inner coin ridge
+		s.Circle(32, 32, 14, cGold1)
+		// Center emblem (Crown / Diamond Crest)
+		s.Line(26, 35, 32, 25, cGold4)
+		s.Line(32, 25, 38, 35, cGold4)
+		s.Line(26, 35, 38, 35, cGold1)
+		s.FillCircle(32, 32, 3, cGold4)
+		s.FillCircle(32, 25, 2, cGold4)
+		// Specular glint at top-left rim
+		s.Line(22, 22, 28, 22, cGold4)
+		s.Line(22, 23, 24, 25, cGold4)
+		s.Pset(24, 21, cGold4)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "gold_coin.png"), 4)
+		_ = s.SavePNG(filepath.Join(dir, "gold.png"), 4)
+	}
+	{
+		// gold_pouch (Bulging dark leather coin pouch overflowing with gold)
+		s := NewSprite64()
+		// Main pouch leather bulb
+		s.FillCircle(32, 40, 18, cWood0)
+		s.FillCircle(32, 39, 16, cWood1)
+		s.FillCircle(30, 37, 13, cWood2)
+		// Pouch cinch neck
+		s.Rect(26, 24, 12, 5, cWood0)
+		s.Rect(27, 24, 10, 4, cWood1)
+		// Cinch ruffle collar
+		s.FillCircle(32, 20, 9, cWood1)
+		s.FillCircle(32, 19, 7, cWood2)
+		// Overflowing gold coins peeking out
+		s.FillCircle(29, 17, 5, cGold1)
+		s.FillCircle(29, 16, 4, cGold3)
+		s.FillCircle(35, 16, 5, cGold2)
+		s.FillCircle(35, 15, 4, cGold4)
+		// Golden tied cord with hanging tassels
+		s.Line(24, 26, 40, 26, cGold3)
+		s.Line(38, 26, 44, 36, cGold3)
+		s.FillCircle(44, 37, 3, cGold4)
+		s.Line(26, 26, 22, 34, cGold2)
+		s.FillCircle(22, 35, 2, cGold3)
+		// Leather highlights and stitching
+		s.Line(20, 36, 24, 46, cWood3)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "gold_pouch.png"), 4)
 	}
 }

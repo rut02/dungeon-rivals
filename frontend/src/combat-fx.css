@@ -1262,3 +1262,16 @@
 .pvp-action-bar {
   margin-top: 16px;
 }
+
+.action-predicted-badge {
+  display: inline-block;
+  margin-left: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  color: #ffd166;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  vertical-align: middle;
+}

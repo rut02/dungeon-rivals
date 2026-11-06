@@ -208,6 +208,7 @@ func Generate(seed uint64, cfg Config) (*State, error) {
 		if cfg.GuaranteeRestOrTreasure {
 			guaranteeRestOrTreasure(rng, &floor, layers)
 		}
+		ensureMonsterOnEveryRoute(rng, &floor, layers)
 		state.Floors[floorIndex] = floor
 	}
 	first := &state.Floors[0]
@@ -467,6 +468,77 @@ func ensureSpecializedRooms(rng *rand.Rand, floor *Floor, layers [][]int) {
 			floor.Nodes[pickIdx].Type = req.room
 		}
 	}
+}
+
+// ensureMonsterOnEveryRoute changes a non-combat node on each combat-free
+// start-to-boss route until every possible route contains a monster or elite.
+func ensureMonsterOnEveryRoute(rng *rand.Rand, floor *Floor, layers [][]int) {
+	if floor == nil || len(layers) < 2 || len(layers[0]) == 0 || len(layers[len(layers)-1]) == 0 {
+		return
+	}
+	start := layers[0][0]
+	boss := layers[len(layers)-1][0]
+	for {
+		path := findCombatFreeRoute(floor, start, boss, false, nil)
+		if len(path) == 0 {
+			return
+		}
+		counts := make(map[RoomType]int)
+		for _, node := range floor.Nodes {
+			counts[node.Type]++
+		}
+		bestPriority := 3
+		candidates := make([]int, 0, len(path))
+		for _, index := range path {
+			if index == start || index == boss || isCombatRoom(floor.Nodes[index].Type) {
+				continue
+			}
+			priority := 0
+			switch floor.Nodes[index].Type {
+			case TreasureRoom, ShopRoom, ForgeRoom, RestRoom:
+				priority = 2
+				if counts[floor.Nodes[index].Type] > 1 {
+					priority = 1
+				}
+			}
+			if priority < bestPriority {
+				bestPriority = priority
+				candidates = candidates[:0]
+			}
+			if priority == bestPriority {
+				candidates = append(candidates, index)
+			}
+		}
+		if len(candidates) == 0 {
+			return
+		}
+		floor.Nodes[candidates[rng.Intn(len(candidates))]].Type = MonsterRoom
+	}
+}
+
+func findCombatFreeRoute(floor *Floor, current, boss int, hasCombat bool, path []int) []int {
+	if current < 0 || current >= len(floor.Nodes) {
+		return nil
+	}
+	path = append(path, current)
+	hasCombat = hasCombat || isCombatRoom(floor.Nodes[current].Type)
+	if current == boss {
+		if !hasCombat {
+			return path
+		}
+		return nil
+	}
+	for _, targetID := range floor.Nodes[current].Connections {
+		target := findNodeIndex(floor, targetID)
+		if result := findCombatFreeRoute(floor, target, boss, hasCombat, path); len(result) > 0 {
+			return result
+		}
+	}
+	return nil
+}
+
+func isCombatRoom(roomType RoomType) bool {
+	return roomType == MonsterRoom || roomType == EliteRoom
 }
 
 func guaranteeRestOrTreasure(rng *rand.Rand, floor *Floor, layers [][]int) {

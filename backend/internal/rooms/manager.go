@@ -128,24 +128,27 @@ type SelfSnapshot struct {
 
 type PrivateSnapshot struct {
 	playerstate.PrivateSnapshot
-	Dungeon              *dungeon.PrivateView `json:"dungeon,omitempty"`
-	Combat               *combat.State        `json:"combat,omitempty"`
-	Activity             *RoomActivity        `json:"activity,omitempty"`
-	LastAcquiredItemID   string               `json:"last_acquired_item_id,omitempty"`
-	LastAcquiredSeq      int                  `json:"last_acquired_seq,omitempty"`
-	PvPActionsUsed       int                  `json:"pvp_actions_used,omitempty"`
-	PvPCurrentTurnID     string               `json:"pvp_current_turn_player_id,omitempty"`
-	PvPYourTurn          bool                 `json:"pvp_your_turn,omitempty"`
-	PvPScore             int                  `json:"pvp_score,omitempty"`
-	PvPDamage            int                  `json:"pvp_damage,omitempty"`
-	PvPKnockouts         int                  `json:"pvp_knockouts,omitempty"`
-	PvPWins              int                  `json:"pvp_wins,omitempty"`
-	PvPLosses            int                  `json:"pvp_losses,omitempty"`
-	PvPCurrentOpponentID string               `json:"pvp_current_opponent_id,omitempty"`
-	PvPBoutNumber        int                  `json:"pvp_bout_number,omitempty"`
-	PvPTotalBouts        int                  `json:"pvp_total_bouts,omitempty"`
-	PvPLog               []string             `json:"pvp_log,omitempty"`
-	PvPBouts             []PvPBoutView        `json:"pvp_bouts,omitempty"`
+	Dungeon               *dungeon.PrivateView `json:"dungeon,omitempty"`
+	Combat                *combat.State        `json:"combat,omitempty"`
+	Activity              *RoomActivity        `json:"activity,omitempty"`
+	LastAcquiredItemID    string               `json:"last_acquired_item_id,omitempty"`
+	LastAcquiredSeq       int                  `json:"last_acquired_seq,omitempty"`
+	PvPActionsUsed        int                  `json:"pvp_actions_used,omitempty"`
+	PvPCurrentTurnID      string               `json:"pvp_current_turn_player_id,omitempty"`
+	PvPYourTurn           bool                 `json:"pvp_your_turn,omitempty"`
+	PvPScore              int                  `json:"pvp_score,omitempty"`
+	PvPDamage             int                  `json:"pvp_damage,omitempty"`
+	PvPKnockouts          int                  `json:"pvp_knockouts,omitempty"`
+	PvPWins               int                  `json:"pvp_wins,omitempty"`
+	PvPLosses             int                  `json:"pvp_losses,omitempty"`
+	PvPCurrentOpponentID  string               `json:"pvp_current_opponent_id,omitempty"`
+	PvPBoutNumber         int                  `json:"pvp_bout_number,omitempty"`
+	PvPTotalBouts         int                  `json:"pvp_total_bouts,omitempty"`
+	PvPLog                []string             `json:"pvp_log,omitempty"`
+	PvPBouts              []PvPBoutView        `json:"pvp_bouts,omitempty"`
+	PvPTempSPD            int                  `json:"pvp_temp_spd,omitempty"`
+	PvPTempSPDTurns       int                  `json:"pvp_temp_spd_turns,omitempty"`
+	PvPEquipmentCooldowns map[string]int       `json:"pvp_equipment_cooldowns,omitempty"`
 }
 
 type ResultEntry struct {
@@ -174,34 +177,40 @@ type ScoreEvent struct {
 }
 
 type player struct {
-	ID, Name, Token    string
-	Ready, Connected   bool
-	Kit                string
-	IsBot              bool
-	BotDifficulty      string
-	Conn               interface{ WriteJSON(any) error }
-	RequestIDs         map[string]struct{}
-	RequestOrder       []string
-	State              *playerstate.State
-	Dungeon            *dungeon.State
-	Combat             *combat.State
-	Activity           *RoomActivity
-	LastAcquiredItemID string
-	LastAcquiredSeq    int
-	PvPActionsUsed     int
-	PvPScore           int
-	PvPScoreRemainder  int
-	PvPDamage          int
-	PvPKnockouts       int
-	PvPDeaths          int
-	PvPPenalty         int
-	PvPBonus           int
-	PvPGuarding        bool
-	PvPSmoke           bool
-	PvPWins            int
-	PvPLosses          int
-	PveScore           int
-	BossesDefeated     int
+	ID, Name, Token       string
+	Ready, Connected      bool
+	Kit                   string
+	IsBot                 bool
+	BotDifficulty         string
+	Conn                  interface{ WriteJSON(any) error }
+	RequestIDs            map[string]struct{}
+	RequestOrder          []string
+	State                 *playerstate.State
+	Dungeon               *dungeon.State
+	Combat                *combat.State
+	Activity              *RoomActivity
+	LastAcquiredItemID    string
+	LastAcquiredSeq       int
+	PvPActionsUsed        int
+	PvPScore              int
+	PvPScoreRemainder     int
+	PvPDamage             int
+	PvPKnockouts          int
+	PvPDeaths             int
+	PvPPenalty            int
+	PvPBonus              int
+	PvPGuarding           bool
+	PvPSmoke              bool
+	PvPFirstHitGuardUsed  bool
+	PvPBarrier            int
+	PvPLifeStealRemainder int
+	PvPTempSPD            int
+	PvPTempSPDTurns       int
+	PvPEquipmentCooldowns map[string]int
+	PvPWins               int
+	PvPLosses             int
+	PveScore              int
+	BossesDefeated        int
 }
 
 func (p *player) recordAcquiredItem(itemID string) {
@@ -555,22 +564,25 @@ func (m *Manager) snapshotLocked(r *room, meID string) Snapshot {
 					currentTurnID = bout.CurrentTurnPlayerID
 				}
 				private := PrivateSnapshot{
-					PrivateSnapshot:      p.State.Snapshot(m.catalog),
-					LastAcquiredItemID:   p.LastAcquiredItemID,
-					LastAcquiredSeq:      p.LastAcquiredSeq,
-					PvPActionsUsed:       p.PvPActionsUsed,
-					PvPCurrentTurnID:     currentTurnID,
-					PvPYourTurn:          currentTurnID == p.ID,
-					PvPScore:             p.PvPScore,
-					PvPDamage:            p.PvPDamage,
-					PvPKnockouts:         p.PvPKnockouts,
-					PvPWins:              p.PvPWins,
-					PvPLosses:            p.PvPLosses,
-					PvPCurrentOpponentID: oppID,
-					PvPBoutNumber:        boutNum,
-					PvPTotalBouts:        totalBouts,
-					PvPLog:               append([]string(nil), r.PvPLog...),
-					PvPBouts:             m.pvpBoutViews(r),
+					PrivateSnapshot:       p.State.Snapshot(m.catalog),
+					LastAcquiredItemID:    p.LastAcquiredItemID,
+					LastAcquiredSeq:       p.LastAcquiredSeq,
+					PvPActionsUsed:        p.PvPActionsUsed,
+					PvPCurrentTurnID:      currentTurnID,
+					PvPYourTurn:           currentTurnID == p.ID,
+					PvPScore:              p.PvPScore,
+					PvPDamage:             p.PvPDamage,
+					PvPKnockouts:          p.PvPKnockouts,
+					PvPWins:               p.PvPWins,
+					PvPLosses:             p.PvPLosses,
+					PvPCurrentOpponentID:  oppID,
+					PvPBoutNumber:         boutNum,
+					PvPTotalBouts:         totalBouts,
+					PvPLog:                append([]string(nil), r.PvPLog...),
+					PvPBouts:              m.pvpBoutViews(r),
+					PvPTempSPD:            p.PvPTempSPD,
+					PvPTempSPDTurns:       p.PvPTempSPDTurns,
+					PvPEquipmentCooldowns: cloneIntMap(p.PvPEquipmentCooldowns),
 				}
 				if p.Dungeon != nil {
 					view := p.Dungeon.PrivateSnapshot()
@@ -883,7 +895,10 @@ func (m *Manager) moveDungeon(r *room, playerID, nodeID string) error {
 	}
 	if node.Type == dungeon.MonsterRoom || node.Type == dungeon.EliteRoom || node.Type == dungeon.BossRoom {
 		p.Activity = nil
-		multiplier := floor.DifficultyMultiplier
+		// Keep encounters threatening as EXP increases the player's whole stat line.
+		// A small level-based bump prevents early-floor bosses from falling behind.
+		levelBonus := float64(min(5, max(0, p.State.Level-1))) * 0.08
+		multiplier := floor.DifficultyMultiplier + levelBonus
 		seed := int64(p.Dungeon.Seed) + int64(node.Floor*1000+node.Depth*100+len(node.ID))
 		if m.monsters != nil {
 			state, _, err := m.monsters.Create(string(node.Type), node.Floor, multiplier, seed)
@@ -964,8 +979,19 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			}
 		}
 	}
-	if len(enc.Enemies) == 1 && target != nil && enc.HP > 0 && target.HP > enc.HP {
-		target.HP = enc.HP
+	if enc.HP > 0 {
+		for i := range enc.Enemies {
+			if enc.Enemies[i].HP > enc.HP {
+				enc.Enemies[i].HP = enc.HP
+			}
+		}
+	}
+	if enc.Attack > 0 {
+		for i := range enc.Enemies {
+			if enc.Enemies[i].Attack < enc.Attack {
+				enc.Enemies[i].Attack = enc.Attack
+			}
+		}
 	}
 
 	rng := mathrand.New(mathrand.NewSource(int64(p.Dungeon.Seed) ^ int64(r.Version+1)))
@@ -974,6 +1000,11 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 	died := false
 	monsterDef := m.monsterByID(enc.MonsterID)
 	stats := p.State.Stats(m.catalog)
+	stats = combatStatsWithBuffs(stats, enc)
+	playerFollowUpBonus := m.equipmentAbilityValue(p, "followup")
+	if stats.Archetype == "bow" {
+		playerFollowUpBonus += m.equipmentAbilityValue(p, "ranger_followup")
+	}
 
 	// Ranger First Strike on Turn 1
 	if stats.Archetype == "bow" && !enc.FirstStrike && target != nil {
@@ -998,17 +1029,40 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		}
 		dealDamage := func() {
 			dmg := combat.Damage(stats.ATK, target.Defense)
-			if stats.Archetype == "daggers" && rng.Intn(100) < 30 {
+			critChance := 30
+			if stats.Archetype == "daggers" {
+				critChance += m.equipmentAbilityValue(p, "rogue_crit")
+			}
+			if stats.Archetype == "daggers" && rng.Intn(100) < min(50, critChance) {
 				dmg = int(float64(dmg) * 1.8)
 				enc.Log = append(enc.Log, "💥 CRITICAL STRIKE!")
 			} else if stats.Archetype == "staff" {
 				dmg = combat.Damage(stats.ATK, int(float64(target.Defense)*0.5))
 			}
+			hpBefore := target.HP
 			target.HP = max(0, target.HP-dmg)
+			m.healFromDamage(p, hpBefore, dmg, enc)
 			enc.Log = append(enc.Log, fmt.Sprintf("You dealt %d damage to %s.", dmg, target.Name))
 			if target.HP == 0 {
 				target.Alive = false
 				enc.Log = append(enc.Log, target.Name+" was defeated!")
+				return
+			}
+			chance := min(32, combat.ExtraStrikeChance(stats.SPD, target.Speed)+playerFollowUpBonus)
+			if chance > 0 && rng.Intn(100) < chance && target.Alive {
+				defense := target.Defense
+				if stats.Archetype == "staff" {
+					defense /= 2
+				}
+				followUp := combat.Damage(int(float64(stats.ATK)*0.60), defense)
+				hpBefore = target.HP
+				target.HP = max(0, target.HP-followUp)
+				m.healFromDamage(p, hpBefore, followUp, enc)
+				enc.Log = append(enc.Log, fmt.Sprintf("⚡ SPD follow-up! โจมตีซ้ำเบา ๆ ใส่ %s อีก %d ดาเมจ (โอกาส %d%%)", target.Name, followUp, chance))
+				if target.HP == 0 {
+					target.Alive = false
+					enc.Log = append(enc.Log, target.Name+" was defeated!")
+				}
 			}
 		}
 
@@ -1040,12 +1094,83 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		if cost <= 0 {
 			cost = 4
 		}
+		cost = max(1, cost-m.equipmentAbilityValue(p, "skill_cost"))
 		if !p.State.ConsumeMP(cost) {
 			return playerstate.ErrNotEnoughMP
 		}
 		enc.SkillCooldown = 3 // 2 turns cooldown after turn ends
+		skillATK := (stats.ATK*(100+m.equipmentAbilityValue(p, "skill_damage")) + 99) / 100
 		castSkill := func() {
 			enc.Log = append(enc.Log, fmt.Sprintf("⚡ You used %s! (-%d MP)", stats.WeaponSkill, cost))
+			if stats.WeaponSkill == "Fourfold Spirit Pact" {
+				if enc.Summon != nil {
+					enc.Log = append(enc.Log, "สปิริตเดิมสลายก่อนเปิดทางให้สปิริตธาตุใหม่")
+				}
+				elements := []string{"fire", "earth", "water", "wind"}
+				element := elements[rng.Intn(len(elements))]
+				summon := &combat.Summon{Element: element, TurnsRemaining: 2}
+				switch element {
+				case "fire":
+					summon.Name = "สปิริตเพลิง"
+					if target != nil && target.Alive {
+						dmg := combat.Damage(int(float64(skillATK)*1.25), target.Defense)
+						hpBefore := target.HP
+						target.HP = max(0, target.HP-dmg)
+						m.healFromDamage(p, hpBefore, dmg, enc)
+						enc.Log = append(enc.Log, fmt.Sprintf("🔥 สปิริตเพลิงพุ่งโจมตี %s สร้างความเสียหาย %d", target.Name, dmg))
+						if target.HP == 0 {
+							target.Alive = false
+						}
+					} else {
+						summon.TurnsRemaining = 1
+					}
+				case "earth":
+					summon.Name = "โกเลมศิลา"
+					summon.MaxHP = max(18, stats.MaxHP/4)
+					summon.HP = summon.MaxHP
+					summon.TurnsRemaining = 2
+					enc.Log = append(enc.Log, fmt.Sprintf("🪨 โกเลมศิลายั่วยุศัตรู! HP %d · รับการโจมตีเดี่ยวแทนคุณ 2 รอบ", summon.HP))
+				case "water":
+					summon.Name = "สปิริตวารี"
+					heal := max(1, stats.MaxHP/10)
+					before := p.State.HP
+					p.State.RestoreHP(p.State.HP+heal, m.catalog)
+					if enc.PlayerStatus != "" {
+						enc.Log = append(enc.Log, "💧 สปิริตวารีล้างสถานะผิดปกติ!")
+						enc.PlayerStatus = ""
+					}
+					enc.Log = append(enc.Log, fmt.Sprintf("💧 สปิริตวารีฟื้นฟู HP %d", p.State.HP-before))
+				case "wind":
+					summon.Name = "สปิริตวายุ"
+					applyCombatBuff(enc, combat.StatBuff{Name: "พรแห่งวายุ", Stat: "spd", Value: 4, TurnsRemaining: 3})
+					enc.Log = append(enc.Log, "🌪️ สปิริตวายุเร่งความเร็วชั่วคราว: SPD +4 เป็นเวลา 2 รอบ")
+				}
+				if summon.MaxHP == 0 {
+					summon.MaxHP = 1
+					summon.HP = 1
+				}
+				enc.Summon = summon
+				return
+			}
+			if stats.WeaponSkillTarget == "adjacent" {
+				start := max(0, enc.SelectedEnemy-1)
+				end := min(len(enc.Enemies)-1, enc.SelectedEnemy+1)
+				for i := start; i <= end; i++ {
+					e := &enc.Enemies[i]
+					if !e.Alive {
+						continue
+					}
+					dmg := combat.Damage(int(float64(skillATK)*1.25), e.Defense)
+					hpBefore := e.HP
+					e.HP = max(0, e.HP-dmg)
+					m.healFromDamage(p, hpBefore, dmg, enc)
+					enc.Log = append(enc.Log, fmt.Sprintf("⚔️ Cleave กวาดโดน %s %d ดาเมจ", e.Name, dmg))
+					if e.HP == 0 {
+						e.Alive = false
+					}
+				}
+				return
+			}
 			if stats.WeaponSkillTarget == "aoe" {
 				for i := range enc.Enemies {
 					e := &enc.Enemies[i]
@@ -1056,8 +1181,10 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 					if stats.Archetype == "staff" {
 						def = int(float64(e.Defense) * 0.4)
 					}
-					dmg := combat.Damage(int(float64(stats.ATK)*1.20), def)
+					dmg := combat.Damage(int(float64(skillATK)*1.20), def)
+					hpBefore := e.HP
 					e.HP = max(0, e.HP-dmg)
+					m.healFromDamage(p, hpBefore, dmg, enc)
 					enc.Log = append(enc.Log, fmt.Sprintf("Hit %s for %d damage.", e.Name, dmg))
 					if e.HP == 0 {
 						e.Alive = false
@@ -1069,15 +1196,17 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 					var dmg int
 					switch stats.Archetype {
 					case "sword":
-						dmg = combat.Damage(int(float64(stats.ATK)*1.35)+stats.DEF, target.Defense)
+						dmg = combat.Damage(int(float64(skillATK)*1.35)+stats.DEF, target.Defense)
 					case "daggers":
-						dmg = combat.Damage(int(float64(stats.ATK)*1.65), target.Defense)
+						dmg = combat.Damage(int(float64(skillATK)*1.65), target.Defense)
 					case "bow", "staff":
-						dmg = combat.Damage(int(float64(stats.ATK)*1.45), target.Defense/2)
+						dmg = combat.Damage(int(float64(skillATK)*1.45), target.Defense/2)
 					default:
-						dmg = combat.Damage(int(float64(stats.ATK)*1.40)+stats.DEF, target.Defense)
+						dmg = combat.Damage(int(float64(skillATK)*1.40)+stats.DEF, target.Defense)
 					}
+					hpBefore := target.HP
 					target.HP = max(0, target.HP-dmg)
+					m.healFromDamage(p, hpBefore, dmg, enc)
 					enc.Log = append(enc.Log, fmt.Sprintf("Dealt %d devastating damage to %s!", dmg, target.Name))
 					if target.HP == 0 {
 						target.Alive = false
@@ -1110,10 +1239,35 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 	case "DEFEND":
 		enc.Guarding = true
 		enc.Log = append(enc.Log, "You raise your guard for the incoming turn.")
-		if stats.Archetype == "staff" {
-			p.State.RestoreMP(8, m.catalog)
-			enc.Log = append(enc.Log, "Mana Barrier restored 8 MP!")
+		enc.ShieldBarrier = m.equipmentAbilityValue(p, "guard_barrier")
+		if enc.ShieldBarrier > 0 {
+			enc.Log = append(enc.Log, fmt.Sprintf("🛡️ อุปกรณ์ตั้งรับสร้างบาเรียรับความเสียหาย %d หน่วย", enc.ShieldBarrier))
 		}
+		if stats.Archetype == "staff" {
+			p.State.RestoreMP(5, m.catalog)
+			enc.Log = append(enc.Log, "Mana Barrier restored 5 MP!")
+		} else {
+			p.State.RestoreMP(3, m.catalog)
+			enc.Log = append(enc.Log, "🧘 ตั้งรับและรวบรวมพลัง: ฟื้น 3 MP")
+		}
+
+	case "GEAR_ABILITY":
+		itemDef, ok := m.catalog.Get(itemID)
+		if !ok || itemDef.AbilityType != "active" || itemDef.AbilityEffect == nil || itemDef.AbilityEffect.Type != "speed_buff" || !playerHasEquipped(p, itemID) {
+			return combat.ErrInvalidAction
+		}
+		if enc.EquipmentCooldowns[itemID] > 0 {
+			return errors.New("EQUIPMENT_SKILL_ON_COOLDOWN")
+		}
+		if !p.State.ConsumeMP(itemDef.AbilityCost) {
+			return playerstate.ErrNotEnoughMP
+		}
+		applyCombatBuff(enc, combat.StatBuff{Name: itemDef.AbilityName, Stat: "spd", Value: itemDef.AbilityEffect.Value, TurnsRemaining: itemDef.AbilityEffect.Duration + 1})
+		if enc.EquipmentCooldowns == nil {
+			enc.EquipmentCooldowns = make(map[string]int)
+		}
+		enc.EquipmentCooldowns[itemID] = itemDef.AbilityCooldown + 1
+		enc.Log = append(enc.Log, fmt.Sprintf("💨 %s! SPD +%d ชั่วคราว %d รอบ · ใช้ %d MP", itemDef.AbilityName, itemDef.AbilityEffect.Value, itemDef.AbilityEffect.Duration, itemDef.AbilityCost))
 
 	case "USE_ITEM":
 		if itemID == "" {
@@ -1150,6 +1304,12 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			skipped = true
 			finish = true
 			enc.Log = append(enc.Log, "💨 Smoke screen deployed! Escaped the encounter.")
+		} else if itemDef.Effect != nil && itemDef.Effect.Type == "speed_buff" {
+			if err := p.State.Use(itemID, "combat", m.catalog); err != nil {
+				return err
+			}
+			applyCombatBuff(enc, combat.StatBuff{Name: itemDef.Name, Stat: "spd", Value: itemDef.Effect.Value, TurnsRemaining: 3})
+			enc.Log = append(enc.Log, fmt.Sprintf("⚡ %s เพิ่ม SPD +%d ชั่วคราว 2 รอบ", itemDef.Name, itemDef.Effect.Value))
 		} else {
 			if err := p.State.Use(itemID, "combat", m.catalog); err != nil {
 				return err
@@ -1198,20 +1358,46 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		m.pveRespawn(p, rng)
 		finish = true
 	}
+	if !finish && !died && enc.PlayerStatus == "poison" {
+		p.State.Damage(3)
+		enc.PlayerStatusTurns--
+		enc.Log = append(enc.Log, "☠️ พิษกัดกร่อน HP 3 หน่วย")
+		if enc.PlayerStatusTurns <= 0 {
+			enc.PlayerStatus = ""
+			enc.PlayerStatusTurns = 0
+		}
+		if p.State.HP == 0 {
+			died = true
+			finish = true
+			enc.Log = append(enc.Log, "💀 พิษทำให้คุณหมดสติ")
+			m.pveRespawn(p, rng)
+		}
+	}
 
 	if !finish {
 		if enc.SkillCooldown > 0 {
 			enc.SkillCooldown--
 		}
-		p.State.RestoreMP(3, m.catalog)
+		tickEquipmentCooldowns(enc)
+		tickCombatBuffs(enc)
 		enc.Guarding = false
+		if enc.Summon != nil {
+			enc.Summon.TurnsRemaining--
+			if enc.Summon.TurnsRemaining <= 0 || enc.Summon.HP <= 0 {
+				enc.Log = append(enc.Log, enc.Summon.Name+" สลายไป")
+				enc.Summon = nil
+			}
+		}
 		enc.Turn++
 		for i := range enc.Enemies {
 			e := &enc.Enemies[i]
 			if !e.Alive {
 				continue
 			}
-			if (enc.Turn+i)%3 == 0 {
+			if e.AoEChance > 0 && rng.Intn(100) < e.AoEChance {
+				e.Intent = "AOE"
+				e.IntentValue = e.Attack
+			} else if (enc.Turn+i)%3 == 0 {
 				e.Intent = "HEAVY"
 				e.IntentValue = max(e.Attack+2, int(float64(e.Attack)*1.35))
 			} else {
@@ -1237,6 +1423,9 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 				}
 				if reward == 0 {
 					reward = rng.Intn(max(1, monsterDef.GoldMax-monsterDef.GoldMin+1)) + monsterDef.GoldMin
+				}
+				if bonus := m.equipmentAbilityValue(p, "gold_bonus"); bonus > 0 {
+					reward += reward * bonus / 100
 				}
 				p.State.Gold += reward
 				source := "monster_kill"
@@ -1294,41 +1483,243 @@ func (m *Manager) enemiesAttack(p *player, enc *combat.State, stats playerstate.
 		if !e.Alive {
 			continue
 		}
-		rawDmg := e.Attack
-		if e.Intent == "HEAVY" {
-			rawDmg = e.IntentValue
-			enc.Log = append(enc.Log, fmt.Sprintf("⚠️ %s unleashes a HEAVY SMASH!", e.Name))
+		chance := combat.ExtraStrikeChance(e.Speed, stats.SPD)
+		extraStrike := chance > 0 && rng.Intn(100) < chance
+		strikeCount := 1
+		if extraStrike {
+			strikeCount = 2
 		}
-		dmg := combat.Damage(rawDmg, stats.DEF)
-		if enc.Guarding {
-			if stats.Archetype == "daggers" && rng.Intn(100) < 50 {
-				dmg = 0
-				enc.Log = append(enc.Log, "💨 Shadow Dodge! You completely evaded the attack!")
-			} else if stats.Archetype == "sword" {
-				dmg = max(1, int(float64(dmg)*0.3))
-				reflect := max(2, stats.DEF)
-				e.HP = max(0, e.HP-reflect)
-				enc.Log = append(enc.Log, fmt.Sprintf("🛡️ Shield Block! Reduced damage to %d and reflected %d to %s!", dmg, reflect, e.Name))
-				if e.HP == 0 {
-					e.Alive = false
-					enc.Log = append(enc.Log, fmt.Sprintf("💥 %s was defeated by your shield reflection!", e.Name))
-				}
-			} else if stats.Archetype == "staff" {
-				dmg = max(1, int(float64(dmg)*0.4))
-				enc.Log = append(enc.Log, fmt.Sprintf("✨ Mana Barrier absorbed the hit! Took only %d damage.", dmg))
-			} else {
-				dmg = max(1, int(float64(dmg)*0.5))
-				enc.Log = append(enc.Log, fmt.Sprintf("🛡️ Guard reduced damage to %d.", dmg))
+		for strike := 0; strike < strikeCount; strike++ {
+			if !e.Alive {
+				break
 			}
-		}
-		if dmg > 0 {
-			p.State.Damage(dmg)
-			enc.Log = append(enc.Log, fmt.Sprintf("%s dealt %d damage.", e.Name, dmg))
+			areaAttack := strike == 0 && e.Intent == "AOE"
+			heavyAttack := strike == 0 && e.Intent == "HEAVY"
+			rawDmg := e.Attack
+			if enc.Attack > rawDmg {
+				rawDmg = enc.Attack
+			}
+			if heavyAttack {
+				rawDmg = e.IntentValue
+				enc.Log = append(enc.Log, fmt.Sprintf("⚠️ %s unleashes a HEAVY SMASH!", e.Name))
+			} else if areaAttack {
+				rawDmg = e.IntentValue
+				enc.Log = append(enc.Log, fmt.Sprintf("💥 %s unleashes an area attack!", e.Name))
+			} else if strike > 0 {
+				enc.Log = append(enc.Log, fmt.Sprintf("⚡ %s เร็วกว่าและโจมตีซ้ำเบา ๆ (SPD %d%%)", e.Name, chance))
+			}
+			dmg := combat.Damage(rawDmg, stats.DEF)
+			if strike > 0 {
+				dmg = combat.Damage(int(float64(dmg)*0.60), 0)
+			}
+			if heavyAttack {
+				if reduction := m.equipmentAbilityValue(p, "heavy_reduction"); reduction > 0 {
+					dmg = max(1, dmg*(100-reduction)/100)
+				}
+			}
+			if areaAttack {
+				if reduction := m.equipmentAbilityValue(p, "aoe_reduction"); reduction > 0 {
+					dmg = max(1, dmg*(100-reduction)/100)
+				}
+			}
+			if enc.Guarding {
+				if stats.Archetype == "daggers" && rng.Intn(100) < 50 {
+					dmg = 0
+					enc.Log = append(enc.Log, "💨 Shadow Dodge! You completely evaded the attack!")
+				} else if stats.Archetype == "sword" && p.State.Equipment.Offhand != "" {
+					dmg = max(1, int(float64(dmg)*0.3))
+					reflect := max(2, stats.DEF)
+					e.HP = max(0, e.HP-reflect)
+					enc.Log = append(enc.Log, fmt.Sprintf("🛡️ Shield Block! Reduced damage to %d and reflected %d to %s!", dmg, reflect, e.Name))
+					if e.HP == 0 {
+						e.Alive = false
+						enc.Log = append(enc.Log, fmt.Sprintf("💥 %s was defeated by your shield reflection!", e.Name))
+					}
+				} else if stats.Archetype == "staff" {
+					dmg = max(1, int(float64(dmg)*0.4))
+					enc.Log = append(enc.Log, fmt.Sprintf("✨ Mana Barrier absorbed the hit! Took only %d damage.", dmg))
+				} else {
+					dmg = max(1, int(float64(dmg)*0.5))
+					enc.Log = append(enc.Log, fmt.Sprintf("🛡️ Guard reduced damage to %d.", dmg))
+				}
+			}
+			if enc.Summon != nil && enc.Summon.Element == "earth" && enc.Summon.HP > 0 && !areaAttack {
+				enc.Summon.HP = max(0, enc.Summon.HP-dmg)
+				enc.Log = append(enc.Log, fmt.Sprintf("🪨 %s โจมตีโกเลมศิลาแทนคุณ โกเลมเหลือ HP %d/%d", e.Name, enc.Summon.HP, enc.Summon.MaxHP))
+				if enc.Summon.HP == 0 {
+					enc.Log = append(enc.Log, "💥 โกเลมศิลาพังทลาย! ศัตรูหันกลับมาเล็งคุณ")
+					enc.Summon = nil
+				}
+				continue
+			}
+			if !areaAttack {
+				if chance := min(20, m.equipmentAbilityValue(p, "evasion")); chance > 0 && rng.Intn(100) < chance {
+					enc.Log = append(enc.Log, "💨 อุปกรณ์หลบหลีกช่วยให้คุณหลบการโจมตีได้!")
+					continue
+				}
+			}
+			if !enc.FirstHitGuardUsed {
+				if reduction := m.equipmentAbilityValue(p, "first_hit_reduction"); reduction > 0 {
+					dmg = max(1, dmg*(100-reduction)/100)
+					enc.FirstHitGuardUsed = true
+					enc.Log = append(enc.Log, fmt.Sprintf("🪖 เกราะศีรษะลดความเสียหายครั้งแรก %d%%", reduction))
+				}
+			}
+			// Area attacks hit both the player and earth golem; player barriers
+			// absorb only the player's share of that damage.
+			summonDamage := dmg
+			if dmg > 0 && enc.ShieldBarrier > 0 {
+				blocked := min(dmg, enc.ShieldBarrier)
+				dmg -= blocked
+				enc.ShieldBarrier -= blocked
+				enc.Log = append(enc.Log, fmt.Sprintf("🛡️ โล่ดูดซับความเสียหาย %d หน่วย", blocked))
+			}
+			if dmg > 0 {
+				p.State.Damage(dmg)
+				enc.Log = append(enc.Log, fmt.Sprintf("%s dealt %d damage.", e.Name, dmg))
+				statusChance := e.StatusChance * (100 - m.equipmentAbilityValue(p, "poison_resist")) / 100
+				if e.AttackStatus != "" && statusChance > 0 && rng.Intn(100) < statusChance {
+					enc.PlayerStatus = e.AttackStatus
+					enc.PlayerStatusTurns = 2
+					enc.Log = append(enc.Log, "☠️ คุณติดพิษ! สปิริตน้ำสามารถล้างสถานะนี้ได้")
+				}
+			}
+			if areaAttack && enc.Summon != nil && enc.Summon.Element == "earth" {
+				enc.Summon.HP = max(0, enc.Summon.HP-summonDamage)
+				enc.Log = append(enc.Log, fmt.Sprintf("🪨 โกเลมศิลาถูกโจมตีวงกว้างด้วย เสีย HP %d", summonDamage))
+				if enc.Summon.HP == 0 {
+					enc.Log = append(enc.Log, "💥 โกเลมศิลาพังทลายจากการโจมตีวงกว้าง!")
+					enc.Summon = nil
+				}
+			}
+			if p.State.HP == 0 {
+				break
+			}
 		}
 		if p.State.HP == 0 {
 			break
 		}
 	}
+}
+
+func applyCombatBuff(enc *combat.State, buff combat.StatBuff) {
+	if enc == nil || buff.Stat == "" || buff.Value <= 0 || buff.TurnsRemaining <= 0 {
+		return
+	}
+	for i := range enc.PlayerBuffs {
+		current := &enc.PlayerBuffs[i]
+		if current.Stat != buff.Stat {
+			continue
+		}
+		if buff.Value > current.Value {
+			current.Name = buff.Name
+			current.Value = buff.Value
+		}
+		current.TurnsRemaining = max(current.TurnsRemaining, buff.TurnsRemaining)
+		return
+	}
+	enc.PlayerBuffs = append(enc.PlayerBuffs, buff)
+}
+
+func tickCombatBuffs(enc *combat.State) {
+	if enc == nil || len(enc.PlayerBuffs) == 0 {
+		return
+	}
+	remaining := enc.PlayerBuffs[:0]
+	for _, buff := range enc.PlayerBuffs {
+		buff.TurnsRemaining--
+		if buff.TurnsRemaining > 0 {
+			remaining = append(remaining, buff)
+		}
+	}
+	enc.PlayerBuffs = remaining
+}
+
+func combatStatsWithBuffs(stats playerstate.StatsSnapshot, enc *combat.State) playerstate.StatsSnapshot {
+	if enc == nil {
+		return stats
+	}
+	for _, buff := range enc.PlayerBuffs {
+		switch buff.Stat {
+		case "atk":
+			stats.ATK += buff.Value
+		case "def":
+			stats.DEF += buff.Value
+		case "spd":
+			stats.SPD += buff.Value
+		}
+	}
+	return stats
+}
+
+func playerHasEquipped(p *player, itemID string) bool {
+	if p == nil || p.State == nil || itemID == "" {
+		return false
+	}
+	e := p.State.Equipment
+	if e.Weapon == itemID || e.Offhand == itemID || e.Armor == itemID || e.Helmet == itemID {
+		return true
+	}
+	return e.Accessories[0] == itemID || e.Accessories[1] == itemID
+}
+
+func (m *Manager) equipmentAbilityValue(p *player, effectType string) int {
+	if m.catalog == nil || p == nil || p.State == nil {
+		return 0
+	}
+	e := p.State.Equipment
+	ids := []string{e.Weapon, e.Offhand, e.Armor, e.Helmet, e.Accessories[0], e.Accessories[1]}
+	value := 0
+	for _, id := range ids {
+		item, ok := m.catalog.Get(id)
+		if ok && item.AbilityEffect != nil && item.AbilityEffect.Type == effectType {
+			value += item.AbilityEffect.Value
+		}
+	}
+	return value
+}
+
+func (m *Manager) healFromDamage(p *player, targetHPBefore, damage int, enc *combat.State) {
+	percent := m.equipmentAbilityValue(p, "lifesteal")
+	dealt := min(targetHPBefore, damage)
+	if percent <= 0 || dealt <= 0 {
+		return
+	}
+	if enc == nil {
+		return
+	}
+	enc.LifeStealRemainder += dealt * percent
+	healing := enc.LifeStealRemainder / 100
+	enc.LifeStealRemainder %= 100
+	if healing == 0 {
+		return
+	}
+	before := p.State.HP
+	p.State.RestoreHP(before+healing, m.catalog)
+	if healed := p.State.HP - before; healed > 0 {
+		enc.Log = append(enc.Log, fmt.Sprintf("🩸 Blood Chalice ดูดเลือดฟื้น HP %d", healed))
+	}
+}
+
+func tickEquipmentCooldowns(enc *combat.State) {
+	for id, turns := range enc.EquipmentCooldowns {
+		if turns <= 1 {
+			delete(enc.EquipmentCooldowns, id)
+		} else {
+			enc.EquipmentCooldowns[id] = turns - 1
+		}
+	}
+}
+
+func cloneIntMap(values map[string]int) map[string]int {
+	if len(values) == 0 {
+		return nil
+	}
+	copyOfValues := make(map[string]int, len(values))
+	for key, value := range values {
+		copyOfValues[key] = value
+	}
+	return copyOfValues
 }
 
 func (m *Manager) maybePreparation(r *room) {
@@ -1461,6 +1852,7 @@ func (m *Manager) tryMonsterLoot(p *player, monster combat.Monster, rng *mathran
 	pool := []string{
 		"health_potion", "greater_health_potion", "mana_potion", "greater_mana_potion",
 		"iron_sword", "knights_claymore", "wooden_staff", "crystal_wand",
+		"elemental_grimoire",
 		"assassins_twinblades", "shadowfang", "elven_recurve", "windrunner_bow",
 		"chainmail_hauberk", "iron_helm", "shadow_cowl", "iron_shield",
 		"boots_of_haste", "thiefs_coin", "blood_chalice", "fire_bomb", "smoke_bomb",
@@ -1471,6 +1863,21 @@ func (m *Manager) tryMonsterLoot(p *player, monster combat.Monster, rng *mathran
 			"shadowfang", "grim_scythe", "windrunner_bow", "dragons_breath_bow",
 			"dragonscale_armor", "crown_of_kings", "aegis_shield", "blood_chalice",
 		}
+	}
+	kit := p.State.Kit
+	if kit == "" || kit == "default" || kit == "warrior" {
+		kit = "knight"
+	}
+	eligible := pool[:0]
+	for _, itemID := range pool {
+		def, ok := m.catalog.Get(itemID)
+		if ok && (def.Type != items.Weapon || weaponClass(def) == kit) {
+			eligible = append(eligible, itemID)
+		}
+	}
+	pool = eligible
+	if len(pool) == 0 {
+		return
 	}
 	id := pool[rng.Intn(len(pool))]
 	if err := p.State.Add(id, 1, m.catalog); err == nil {

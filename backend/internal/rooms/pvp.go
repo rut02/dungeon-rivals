@@ -61,6 +61,12 @@ func (m *Manager) restoreFighterForBout(p *player) {
 	p.State.RestoreMP(stats.MaxMP, m.catalog)
 	p.PvPGuarding = false
 	p.PvPSmoke = false
+	p.PvPFirstHitGuardUsed = false
+	p.PvPBarrier = 0
+	p.PvPLifeStealRemainder = 0
+	p.PvPTempSPD = 0
+	p.PvPTempSPDTurns = 0
+	p.PvPEquipmentCooldowns = nil
 }
 
 func (m *Manager) appendPvPLog(r *room, msg string) {
@@ -192,10 +198,29 @@ func (m *Manager) applyPvPDefenseModifiers(attacker, defender *player, rawDamage
 		defender.PvPGuarding = false
 		return damage
 	}
+	if chance := min(20, m.equipmentAbilityValue(defender, "evasion")); chance > 0 && mathrand.Intn(100) < chance {
+		defender.PvPGuarding = false
+		return 0
+	}
+	if !defender.PvPFirstHitGuardUsed {
+		if reduction := m.equipmentAbilityValue(defender, "first_hit_reduction"); reduction > 0 {
+			damage = max(1, damage*(100-reduction)/100)
+			defender.PvPFirstHitGuardUsed = true
+		}
+	}
+	if defender.PvPBarrier > 0 {
+		blocked := min(damage, defender.PvPBarrier)
+		damage -= blocked
+		defender.PvPBarrier -= blocked
+	}
+	if damage <= 0 {
+		defender.PvPGuarding = false
+		return 0
+	}
 	if defender.PvPGuarding {
 		if tStats.Archetype == "daggers" && mathrand.Intn(100) < 50 {
 			damage = 0
-		} else if tStats.Archetype == "sword" {
+		} else if tStats.Archetype == "sword" && defender.State != nil && defender.State.Equipment.Offhand != "" {
 			damage = max(1, int(float64(damage)*0.35))
 			reflect := max(2, tStats.DEF)
 			attacker.State.Damage(reflect)
@@ -207,6 +232,38 @@ func (m *Manager) applyPvPDefenseModifiers(attacker, defender *player, rawDamage
 		defender.PvPGuarding = false
 	}
 	return damage
+}
+
+func (m *Manager) healFromPvPDamage(p *player, dealt int) int {
+	percent := m.equipmentAbilityValue(p, "lifesteal")
+	if p == nil || p.State == nil || percent <= 0 || dealt <= 0 {
+		return 0
+	}
+	p.PvPLifeStealRemainder += dealt * percent
+	healing := p.PvPLifeStealRemainder / 100
+	p.PvPLifeStealRemainder %= 100
+	if healing <= 0 {
+		return 0
+	}
+	before := p.State.HP
+	p.State.RestoreHP(before+healing, m.catalog)
+	return p.State.HP - before
+}
+
+func (m *Manager) tickPvPEquipmentEffects(p *player) {
+	if p.PvPTempSPDTurns > 0 {
+		p.PvPTempSPDTurns--
+		if p.PvPTempSPDTurns == 0 {
+			p.PvPTempSPD = 0
+		}
+	}
+	for id, turns := range p.PvPEquipmentCooldowns {
+		if turns <= 1 {
+			delete(p.PvPEquipmentCooldowns, id)
+		} else {
+			p.PvPEquipmentCooldowns[id] = turns - 1
+		}
+	}
 }
 
 func (m *Manager) resolveBoutOpponentLocked(r *room, bout *PvPBout, actor *player, targetID string) *player {
@@ -266,6 +323,9 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 	}
 
 	pStats := p.State.Stats(m.catalog)
+	if p.PvPTempSPDTurns > 0 {
+		pStats.SPD += p.PvPTempSPD
+	}
 	tStats := target.State.Stats(m.catalog)
 
 	switch action {
@@ -275,7 +335,8 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 		}
 		rawDmg := combat.Damage(pStats.ATK, tStats.DEF)
 		critText := ""
-		if pStats.Archetype == "daggers" && mathrand.Intn(100) < 30 {
+		critChance := min(50, 30+m.equipmentAbilityValue(p, "rogue_crit"))
+		if pStats.Archetype == "daggers" && mathrand.Intn(100) < critChance {
 			rawDmg = int(float64(rawDmg) * 1.75)
 			critText = " (คริติคอล!)"
 		} else if pStats.Archetype == "staff" {
@@ -286,7 +347,27 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 		target.State.Damage(damage)
 		dealt := before - target.State.HP
 		m.addPvPDamageScoreLocked(r, p, dealt)
+		if healed := m.healFromPvPDamage(p, dealt); healed > 0 {
+			m.appendPvPLog(r, fmt.Sprintf("🩸 Blood Chalice ฟื้น HP %d ให้ %s", healed, p.Name))
+		}
 		m.appendPvPLog(r, fmt.Sprintf("⚔️ %s โจมตี %s สร้างความเสียหาย %d หน่วย%s", p.Name, target.Name, dealt, critText))
+		followUpBonus := m.equipmentAbilityValue(p, "followup")
+		if pStats.Archetype == "bow" {
+			followUpBonus += m.equipmentAbilityValue(p, "ranger_followup")
+		}
+		followUpChance := min(32, combat.ExtraStrikeChance(pStats.SPD, tStats.SPD)+followUpBonus)
+		if target.State.HP > 0 && p.State.HP > 0 && followUpChance > 0 && mathrand.Intn(100) < followUpChance {
+			followUpRaw := combat.Damage(int(float64(pStats.ATK)*0.60), tStats.DEF)
+			followUpDamage := m.applyPvPDefenseModifiers(p, target, followUpRaw, tStats)
+			before = target.State.HP
+			target.State.Damage(followUpDamage)
+			followUpDealt := before - target.State.HP
+			m.addPvPDamageScoreLocked(r, p, followUpDealt)
+			if healed := m.healFromPvPDamage(p, followUpDealt); healed > 0 {
+				m.appendPvPLog(r, fmt.Sprintf("🩸 Blood Chalice ฟื้น HP %d ให้ %s", healed, p.Name))
+			}
+			m.appendPvPLog(r, fmt.Sprintf("⚡ %s โจมตีซ้ำจาก SPD อีก %d หน่วย (%d%%)", p.Name, followUpDealt, followUpChance))
+		}
 
 	case "SKILL":
 		if target.State.HP <= 0 {
@@ -296,6 +377,7 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 		if cost <= 0 {
 			cost = 5
 		}
+		cost = max(1, cost-m.equipmentAbilityValue(p, "skill_cost"))
 		if !p.State.ConsumeMP(cost) {
 			return playerstate.ErrNotEnoughMP
 		}
@@ -303,37 +385,68 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 		if skillName == "" {
 			skillName = "ท่าไม้ตายอาวุธ"
 		}
+		skillATK := (pStats.ATK*(100+m.equipmentAbilityValue(p, "skill_damage")) + 99) / 100
 		var rawDmg int
 		switch pStats.Archetype {
 		case "sword":
-			rawDmg = combat.Damage(int(float64(pStats.ATK)*1.40)+pStats.DEF, tStats.DEF)
+			rawDmg = combat.Damage(int(float64(skillATK)*1.40)+pStats.DEF, tStats.DEF)
 			p.PvPGuarding = true
 		case "daggers":
-			rawDmg = combat.Damage(int(float64(pStats.ATK)*1.75), tStats.DEF/2)
+			rawDmg = combat.Damage(int(float64(skillATK)*1.75), tStats.DEF/2)
 		case "bow":
-			rawDmg = combat.Damage(int(float64(pStats.ATK)*1.55), tStats.DEF/2)
+			rawDmg = combat.Damage(int(float64(skillATK)*1.55), tStats.DEF/2)
 		case "staff":
-			rawDmg = combat.Damage(int(float64(pStats.ATK)*1.60), tStats.DEF/3)
+			rawDmg = combat.Damage(int(float64(skillATK)*1.60), tStats.DEF/3)
 		default:
-			rawDmg = combat.Damage(int(float64(pStats.ATK)*1.45), tStats.DEF/2)
+			rawDmg = combat.Damage(int(float64(skillATK)*1.45), tStats.DEF/2)
 		}
 		damage := m.applyPvPDefenseModifiers(p, target, rawDmg, tStats)
 		before := target.State.HP
 		target.State.Damage(damage)
 		dealt := before - target.State.HP
 		m.addPvPDamageScoreLocked(r, p, dealt)
+		if healed := m.healFromPvPDamage(p, dealt); healed > 0 {
+			m.appendPvPLog(r, fmt.Sprintf("🩸 Blood Chalice ฟื้น HP %d ให้ %s", healed, p.Name))
+		}
 		m.appendPvPLog(r, fmt.Sprintf("⚡ %s ใช้สกิล %s (-%d MP) โจมตี %s สร้างความเสียหาย %d หน่วย!", p.Name, skillName, cost, target.Name, dealt))
 
 	case "DEFEND":
 		p.PvPGuarding = true
-		p.State.RestoreMP(8, m.catalog)
+		p.PvPBarrier = m.equipmentAbilityValue(p, "guard_barrier")
+		mpRecovery := 3
+		if pStats.Archetype == "staff" {
+			mpRecovery = 5
+		}
+		p.State.RestoreMP(mpRecovery, m.catalog)
 		// Tactical counter-jab so bouts always progress
 		jab := max(3, pStats.ATK/3)
 		before := target.State.HP
 		target.State.Damage(jab)
 		dealt := before - target.State.HP
 		m.addPvPDamageScoreLocked(r, p, dealt)
-		m.appendPvPLog(r, fmt.Sprintf("🛡️ %s ตั้งการ์ดป้องกัน (+8 MP) และกระแทกสวนกลับ %s %d หน่วย", p.Name, target.Name, dealt))
+		m.appendPvPLog(r, fmt.Sprintf("🛡️ %s ตั้งการ์ดป้องกัน (+%d MP) และกระแทกสวนกลับ %s %d หน่วย", p.Name, mpRecovery, target.Name, dealt))
+		if p.PvPBarrier > 0 {
+			m.appendPvPLog(r, fmt.Sprintf("🛡️ บาเรียจากอุปกรณ์รับความเสียหาย %d หน่วย", p.PvPBarrier))
+		}
+
+	case "GEAR_ABILITY":
+		itemDef, ok := m.catalog.Get(itemID)
+		if !ok || itemDef.AbilityType != "active" || itemDef.AbilityEffect == nil || itemDef.AbilityEffect.Type != "speed_buff" || !playerHasEquipped(p, itemID) {
+			return combat.ErrInvalidAction
+		}
+		if p.PvPEquipmentCooldowns[itemID] > 0 {
+			return errors.New("EQUIPMENT_SKILL_ON_COOLDOWN")
+		}
+		if !p.State.ConsumeMP(itemDef.AbilityCost) {
+			return playerstate.ErrNotEnoughMP
+		}
+		p.PvPTempSPD = max(p.PvPTempSPD, itemDef.AbilityEffect.Value)
+		p.PvPTempSPDTurns = max(p.PvPTempSPDTurns, itemDef.AbilityEffect.Duration+1)
+		if p.PvPEquipmentCooldowns == nil {
+			p.PvPEquipmentCooldowns = make(map[string]int)
+		}
+		p.PvPEquipmentCooldowns[itemID] = itemDef.AbilityCooldown + 1
+		m.appendPvPLog(r, fmt.Sprintf("💨 %s ใช้ %s: SPD +%d ชั่วคราว %d เทิร์น (-%d MP)", p.Name, itemDef.AbilityName, itemDef.AbilityEffect.Value, itemDef.AbilityEffect.Duration, itemDef.AbilityCost))
 
 	case "USE_ITEM":
 		if itemID == "" {
@@ -362,7 +475,6 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 			}
 			p.PvPSmoke = true
 			p.PvPGuarding = true
-			p.State.RestoreMP(6, m.catalog)
 			ambushDmg := max(8, pStats.ATK)
 			before := target.State.HP
 			target.State.Damage(ambushDmg)
@@ -381,6 +493,7 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 	}
 
 	p.PvPActionsUsed++
+	m.tickPvPEquipmentEffects(p)
 	bout.Turns++
 	p.State.Score = p.PveScore + p.PvPScore - p.PvPPenalty
 

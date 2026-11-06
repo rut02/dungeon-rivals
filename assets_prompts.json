@@ -425,5 +425,75 @@
     "name": "Dungeon Rivals Cover Art",
     "filename": "dungeon-cover.png",
     "prompt": "64-bit dark fantasy pixel art title cover art of Dungeon Rivals: an ancient massive gothic obsidian gate inside a vast subterranean cavern glowing with eerie turquoise cyan and purple soulfire, crumbling stone steps covered in glowing arcane runes, dark mist drifting from the crypt portal entrance, cinematic wide illustration, atmospheric dark fantasy, Blasphemous and Dark Souls pixel art aesthetic, dramatic volumetric lighting, high contrast, crisp pixel details, no text"
+  },
+  {
+    "id": "hero_knight",
+    "category": "hero",
+    "name": "Knight Battle Sprite",
+    "filename": "hero_knight.png",
+    "prompt": "64x64 native-grid dark fantasy pixel sprite of a sturdy knight in black steel plate with a compact kite shield and one-handed sword, readable front-facing stance, cyan eyes, tarnished gold accents, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no text, no blur"
+  },
+  {
+    "id": "hero_mage",
+    "category": "hero",
+    "name": "Mage Battle Sprite",
+    "filename": "hero_mage.png",
+    "prompt": "64x64 native-grid dark fantasy pixel sprite of a hooded mage in layered violet robes holding a rune grimoire and a small arcane staff, cyan and violet spell glow, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no text, no blur"
+  },
+  {
+    "id": "hero_rogue",
+    "category": "hero",
+    "name": "Rogue Battle Sprite",
+    "filename": "hero_rogue.png",
+    "prompt": "64x64 native-grid dark fantasy pixel sprite of a hooded rogue in fitted dark leather armor holding paired short daggers, crimson and muted steel accents, agile low stance, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no text, no blur"
+  },
+  {
+    "id": "hero_ranger",
+    "category": "hero",
+    "name": "Ranger Battle Sprite",
+    "filename": "hero_ranger.png",
+    "prompt": "64x64 native-grid dark fantasy pixel sprite of a masked ranger in travel leathers holding a longbow with a quiver, deep wood browns and pale cyan accents, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no text, no blur"
+  },
+  {
+    "id": "summon_fire",
+    "category": "summon",
+    "name": "Fire Spirit",
+    "filename": "summon_fire.png",
+    "prompt": "64x64 native-grid dark fantasy pixel sprite of a small floating fire spirit with a bright ember heart, jagged flame silhouette and tiny dark eyes, volcanic orange and gold palette, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no text, no blur"
+  },
+  {
+    "id": "summon_earth",
+    "category": "summon",
+    "name": "Stone Golem Spirit",
+    "filename": "summon_earth.png",
+    "prompt": "64x64 native-grid dark fantasy pixel sprite of a squat protective stone golem spirit with broad shoulders and glowing amber eyes, chunky rock silhouette, stands in front of its summoner, ancient bone and earth palette, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no text, no blur"
+  },
+  {
+    "id": "summon_water",
+    "category": "summon",
+    "name": "Water Spirit",
+    "filename": "summon_water.png",
+    "prompt": "64x64 native-grid dark fantasy pixel sprite of a gentle floating water spirit formed from a blue droplet and curling wave ribbons, icy cyan highlights, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no text, no blur"
+  },
+  {
+    "id": "summon_wind",
+    "category": "summon",
+    "name": "Wind Spirit",
+    "filename": "summon_wind.png",
+    "prompt": "64x64 native-grid dark fantasy pixel sprite of a swift wind spirit, bright pale-blue core surrounded by two curved gust ribbons and feather-like wisps, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no text, no blur"
+  },
+  {
+    "id": "elemental_grimoire",
+    "category": "weapon",
+    "name": "Fourfold Spirit Grimoire",
+    "filename": "elemental_grimoire.png",
+    "prompt": "64x64 native-grid dark fantasy pixel item icon of a closed ancient spellbook with four elemental sigils for fire, earth, water and wind on a weathered black cover, small glowing page edges, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no hands, no text, no blur"
+  },
+  {
+    "id": "wind_draught",
+    "category": "consumable",
+    "name": "Windrunner Draught",
+    "filename": "wind_draught.png",
+    "prompt": "64x64 native-grid dark fantasy pixel item icon of a small glass potion flask filled with pale cyan wind magic and a curling gust rune, brass stopper, transparent background, crisp 4-6 color ramps, 1px dark outline, nearest-neighbor 4x export, no hands, no text, no blur"
   }
 ]

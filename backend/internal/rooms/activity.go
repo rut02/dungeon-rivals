@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"dungeon-rivals/backend/internal/dungeon"
+	"dungeon-rivals/backend/internal/items"
 )
 
 type RoomOption struct {
@@ -41,18 +42,30 @@ func (m *Manager) beginActivity(p *player, node dungeon.Node) error {
 		p.State.RestoreMP(15, m.catalog)
 		return m.resolveRoom(p, false)
 	case dungeon.TreasureRoom:
+		kit := p.State.Kit
+		if kit == "" || kit == "default" || kit == "warrior" {
+			kit = "knight"
+		}
+		starterWeapon := map[string]string{"knight": "iron_sword", "mage": "elemental_grimoire", "rogue": "iron_dagger", "ranger": "hunting_bow"}[kit]
+		if starterWeapon == "" {
+			starterWeapon = "iron_sword"
+		}
 		p.Activity = &RoomActivity{
 			Type: "TREASURE",
 			Options: []RoomOption{
 				{ID: "health_potion", Label: "Health Potion", Description: "รับยาฟื้นฟูพลังชีวิต 1 ขวด", Kind: "item", ItemID: "health_potion"},
-				{ID: "iron_sword", Label: "Iron Weapon", Description: "รับอาวุธสำหรับผจญภัย", Kind: "item", ItemID: "iron_sword"},
+				{ID: starterWeapon, Label: "อาวุธประจำคลาส", Description: "รับอาวุธที่ใช้ได้กับคลาสของคุณ", Kind: "item", ItemID: starterWeapon},
 				{ID: "gold", Label: "Gold Cache", Description: "รับ 25 Gold", Kind: "gold", Value: 25},
 			},
 		}
 	case dungeon.ShopRoom:
 		activity := &RoomActivity{Type: "SHOP", Stock: []ShopStock{}}
+		kit := p.State.Kit
+		if kit == "" || kit == "default" || kit == "warrior" {
+			kit = "knight"
+		}
 		for _, item := range m.catalog.List() {
-			if item.Price > 0 {
+			if item.Price > 0 && (item.Type != items.Weapon || weaponClass(item) == kit) {
 				activity.Stock = append(activity.Stock, ShopStock{ItemID: item.ID, Name: item.Name, Price: item.Price, Available: true})
 			}
 		}
@@ -88,6 +101,13 @@ func (m *Manager) beginActivity(p *player, node dungeon.Node) error {
 		return fmt.Errorf("unsupported room activity %s", node.Type)
 	}
 	return nil
+}
+
+func weaponClass(item items.Definition) string {
+	if item.Class != "" {
+		return item.Class
+	}
+	return map[string]string{"sword": "knight", "staff": "mage", "daggers": "rogue", "bow": "ranger"}[item.Archetype]
 }
 
 func (m *Manager) resolveRoom(p *player, skipped bool) error {

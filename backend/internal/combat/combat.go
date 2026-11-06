@@ -13,50 +13,79 @@ import (
 )
 
 type Monster struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	BaseHP      int    `json:"base_hp"`
-	BaseAttack  int    `json:"base_attack"`
-	BaseDefense int    `json:"base_defense"`
-	Speed       int    `json:"speed,omitempty"`
-	GoldMin     int    `json:"gold_min"`
-	GoldMax     int    `json:"gold_max"`
-	ScoreReward int    `json:"score_reward"`
-	LootTable   string `json:"loot_table"`
-	Tier        string `json:"tier"`
-	Floor       int    `json:"floor,omitempty"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	BaseHP       int    `json:"base_hp"`
+	BaseAttack   int    `json:"base_attack"`
+	BaseDefense  int    `json:"base_defense"`
+	Speed        int    `json:"speed,omitempty"`
+	GoldMin      int    `json:"gold_min"`
+	GoldMax      int    `json:"gold_max"`
+	ScoreReward  int    `json:"score_reward"`
+	LootTable    string `json:"loot_table"`
+	Tier         string `json:"tier"`
+	Floor        int    `json:"floor,omitempty"`
+	AoEChance    int    `json:"aoe_chance,omitempty"`
+	AttackStatus string `json:"attack_status,omitempty"`
+	StatusChance int    `json:"status_chance,omitempty"`
 }
 
 type Catalog struct{ Monsters []Monster }
 
 type Enemy struct {
-	Index       int    `json:"index"`
-	MonsterID   string `json:"monster_id"`
-	Name        string `json:"name"`
-	Tier        string `json:"tier"`
-	HP          int    `json:"hp"`
-	MaxHP       int    `json:"max_hp"`
-	Attack      int    `json:"attack"`
-	Defense     int    `json:"defense"`
-	Speed       int    `json:"speed"`
-	Intent      string `json:"intent"` // "ATTACK", "HEAVY", "BUFF"
-	IntentValue int    `json:"intent_value"`
-	Alive       bool   `json:"alive"`
+	Index        int    `json:"index"`
+	MonsterID    string `json:"monster_id"`
+	Name         string `json:"name"`
+	Tier         string `json:"tier"`
+	HP           int    `json:"hp"`
+	MaxHP        int    `json:"max_hp"`
+	Attack       int    `json:"attack"`
+	Defense      int    `json:"defense"`
+	Speed        int    `json:"speed"`
+	AoEChance    int    `json:"aoe_chance,omitempty"`
+	AttackStatus string `json:"attack_status,omitempty"`
+	StatusChance int    `json:"status_chance,omitempty"`
+	Intent       string `json:"intent"` // "ATTACK", "HEAVY", "BUFF"
+	IntentValue  int    `json:"intent_value"`
+	Alive        bool   `json:"alive"`
+}
+
+type Summon struct {
+	Element        string `json:"element"`
+	Name           string `json:"name"`
+	HP             int    `json:"hp"`
+	MaxHP          int    `json:"max_hp"`
+	TurnsRemaining int    `json:"turns_remaining"`
+}
+
+type StatBuff struct {
+	Name           string `json:"name"`
+	Stat           string `json:"stat"`
+	Value          int    `json:"value"`
+	TurnsRemaining int    `json:"turns_remaining"`
 }
 
 type State struct {
-	Enemies       []Enemy  `json:"enemies"`
-	SelectedEnemy int      `json:"selected_enemy"`
-	Turn          int      `json:"turn"`
-	Finished      bool     `json:"finished"`
-	Victory       bool     `json:"victory"`
-	Guarding      bool     `json:"guarding"`
-	FirstStrike   bool     `json:"first_strike"`
-	SkillCooldown int      `json:"skill_cooldown"`
-	EscapeSuccess bool     `json:"escape_success"`
-	LootItemID    string   `json:"loot_item_id,omitempty"`
-	Log           []string `json:"log"`
+	Enemies            []Enemy        `json:"enemies"`
+	SelectedEnemy      int            `json:"selected_enemy"`
+	Turn               int            `json:"turn"`
+	Finished           bool           `json:"finished"`
+	Victory            bool           `json:"victory"`
+	Guarding           bool           `json:"guarding"`
+	FirstStrike        bool           `json:"first_strike"`
+	SkillCooldown      int            `json:"skill_cooldown"`
+	Summon             *Summon        `json:"summon,omitempty"`
+	PlayerBuffs        []StatBuff     `json:"player_buffs,omitempty"`
+	EquipmentCooldowns map[string]int `json:"equipment_cooldowns,omitempty"`
+	FirstHitGuardUsed  bool           `json:"first_hit_guard_used,omitempty"`
+	LifeStealRemainder int            `json:"life_steal_remainder,omitempty"`
+	PlayerStatus       string         `json:"player_status,omitempty"`
+	PlayerStatusTurns  int            `json:"player_status_turns,omitempty"`
+	ShieldBarrier      int            `json:"shield_barrier,omitempty"`
+	EscapeSuccess      bool           `json:"escape_success"`
+	LootItemID         string         `json:"loot_item_id,omitempty"`
+	Log                []string       `json:"log"`
 
 	// Backward compatibility fields for legacy clients
 	MonsterID   string `json:"monster_id"`
@@ -99,7 +128,7 @@ func Load(path string) (*Catalog, error) {
 	}
 	seen := map[string]bool{}
 	for _, m := range ms {
-		if m.ID == "" || m.Name == "" || m.BaseHP < 1 || m.BaseAttack < 0 || m.BaseDefense < 0 || m.GoldMin < 0 || m.GoldMax < m.GoldMin || m.ScoreReward < 0 || seen[m.ID] || (m.Tier != "normal" && m.Tier != "elite" && m.Tier != "boss") {
+		if m.ID == "" || m.Name == "" || m.BaseHP < 1 || m.BaseAttack < 0 || m.BaseDefense < 0 || m.GoldMin < 0 || m.GoldMax < m.GoldMin || m.ScoreReward < 0 || m.AoEChance < 0 || m.AoEChance > 100 || m.StatusChance < 0 || m.StatusChance > 100 || (m.AttackStatus != "" && m.AttackStatus != "poison") || seen[m.ID] || (m.Tier != "normal" && m.Tier != "elite" && m.Tier != "boss") {
 			return nil, fmt.Errorf("%w: invalid monster %q", ErrInvalidCatalog, m.ID)
 		}
 		seen[m.ID] = true
@@ -134,16 +163,19 @@ func (c *Catalog) Create(roomType string, floor int, multiplier float64, seed in
 
 	scale := func(v int) int { return int(math.Ceil(float64(v) * multiplier)) }
 
-	// Determine enemy count (Floor 1: 1 monster. Floor 2: 1-2 monsters. Floor 3: 1-3 monsters for weak enemies)
+	// Enemy groups grow with depth, while every individual enemy scales down in packs.
 	count := 1
 	if tier == "normal" {
 		if floor == 1 {
-			count = 1
-		} else if floor == 2 {
-			if rng.Intn(100) < 60 {
+			if rng.Intn(100) < 30 {
 				count = 2
-			} else {
-				count = 1
+			}
+		} else if floor == 2 {
+			roll := rng.Intn(100)
+			if roll < 10 {
+				count = 3
+			} else if roll < 65 {
+				count = 2
 			}
 		} else {
 			roll := rng.Intn(100)
@@ -183,18 +215,21 @@ func (c *Catalog) Create(roomType string, floor int, multiplier float64, seed in
 			name = fmt.Sprintf("%s #%d", m.Name, i+1)
 		}
 		enemies = append(enemies, Enemy{
-			Index:       i,
-			MonsterID:   m.ID,
-			Name:        name,
-			Tier:        m.Tier,
-			HP:          hp,
-			MaxHP:       hp,
-			Attack:      atk,
-			Defense:     def,
-			Speed:       spd,
-			Intent:      intent,
-			IntentValue: intentVal,
-			Alive:       true,
+			Index:        i,
+			MonsterID:    m.ID,
+			Name:         name,
+			Tier:         m.Tier,
+			HP:           hp,
+			MaxHP:        hp,
+			Attack:       atk,
+			Defense:      def,
+			Speed:        spd,
+			AoEChance:    m.AoEChance,
+			AttackStatus: m.AttackStatus,
+			StatusChance: m.StatusChance,
+			Intent:       intent,
+			IntentValue:  intentVal,
+			Alive:        true,
 		})
 		log = append(log, name+" appears!")
 	}
@@ -278,3 +313,9 @@ func (s *State) Selected() *Enemy {
 
 // Damage applies the MVP minimum-one damage rule.
 func Damage(attack, defense int) int { return max(1, attack-defense) }
+
+// ExtraStrikeChance returns a capped, speed-difference-based chance for one
+// light follow-up hit. It never grants a guaranteed second turn.
+func ExtraStrikeChance(attackerSpeed, defenderSpeed int) int {
+	return min(32, max(0, attackerSpeed-defenderSpeed)*4)
+}

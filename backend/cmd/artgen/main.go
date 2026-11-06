@@ -98,6 +98,23 @@ func (s *Sprite64) FillCircle(cx, cy, r int, c color.RGBA) {
 	}
 }
 
+func (s *Sprite64) FillTriangle(ax, ay, bx, by, cx, cy int, c color.RGBA) {
+	minX, maxX := min(ax, min(bx, cx)), max(ax, max(bx, cx))
+	minY, maxY := min(ay, min(by, cy)), max(ay, max(by, cy))
+	edge := func(x1, y1, x2, y2, x, y int) int {
+		return (x-x1)*(y2-y1) - (y-y1)*(x2-x1)
+	}
+	area := edge(ax, ay, bx, by, cx, cy)
+	for y := minY; y <= maxY; y++ {
+		for x := minX; x <= maxX; x++ {
+			u, v, w := edge(ax, ay, bx, by, x, y), edge(bx, by, cx, cy, x, y), edge(cx, cy, ax, ay, x, y)
+			if (area > 0 && u >= 0 && v >= 0 && w >= 0) || (area < 0 && u <= 0 && v <= 0 && w <= 0) {
+				s.Pset(x, y, c)
+			}
+		}
+	}
+}
+
 func (s *Sprite64) Circle(cx, cy, r int, c color.RGBA) {
 	x, y := r, 0
 	err := 0
@@ -289,12 +306,371 @@ func main() {
 	}
 	fmt.Printf("=== 64-bit Dark Fantasy Pixel Art Generator ===\n")
 	fmt.Printf("Output: %s (Format: 256x256 PNG, Transparent Background)\n", outDir)
+	if os.Getenv("ART_ONLY_NEW") == "1" {
+		genClassAndSummonSprites64(outDir)
+		fmt.Println("=== New class, spirit, and grimoire sprites generated ===")
+		return
+	}
 
 	genHero64(filepath.Join(outDir, "hero.png"))
+	genClassAndSummonSprites64(outDir)
 	genMonsters64(outDir)
 	genItems64(outDir)
 
 	fmt.Println("=== All 50 Dark Fantasy 64-bit Assets Successfully Generated ===")
+}
+
+func genClassAndSummonSprites64(dir string) {
+	// Character silhouettes use distinct equipment, poses and layered palette ramps.
+	{
+		s := NewSprite64()
+		s.Rect(16, 27, 9, 27, cBlood0) // split cape behind the plate
+		s.Line(17, 48, 13, 58, cBlood1)
+		s.Rect(25, 42, 6, 16, cSteel0)
+		s.Rect(34, 42, 6, 16, cSteel0)
+		s.Rect(22, 56, 10, 5, cSteel2)
+		s.Rect(33, 56, 10, 5, cSteel2)
+		s.Rect(21, 25, 22, 20, cSteel1)
+		s.Rect(24, 28, 16, 13, cSteel2)
+		s.Rect(27, 29, 10, 2, cSteel3)
+		s.FillTriangle(24, 31, 40, 31, 32, 42, cSteel3)
+		s.FillTriangle(27, 33, 37, 33, 32, 40, cSteel2)
+		s.Line(25, 31, 25, 40, cSteel4)
+		s.Line(39, 31, 39, 40, cSteel1)
+		s.Line(31, 31, 31, 39, cGold3)
+		s.Line(32, 31, 32, 39, cGold2)
+		s.FillCircle(32, 36, 2, cGold3)
+		s.Pset(32, 36, cIce3)
+		s.Rect(17, 26, 8, 7, cSteel2)
+		s.Rect(39, 26, 8, 7, cSteel0)
+		s.Line(18, 27, 23, 27, cSteel4)
+		s.Line(40, 27, 45, 27, cSteel2)
+		s.Line(17, 28, 12, 23, cSteel3)
+		s.Rect(25, 10, 14, 15, cSteel0)
+		s.Rect(23, 15, 18, 8, cSteel1)
+		s.Rect(25, 18, 14, 3, cObsidian0)
+		s.Rect(27, 18, 3, 2, cIce3)
+		s.Rect(34, 18, 3, 2, cIce3)
+		s.Rect(29, 22, 6, 2, cSteel3)
+		s.Rect(9, 31, 10, 18, cSteel0) // kite shield
+		s.Rect(11, 33, 6, 13, cSteel2)
+		s.Line(14, 34, 14, 44, cGold3)
+		s.Pset(14, 38, cGold4)
+		s.ThickLine(52, 12, 48, 48, 2, cSteel4)
+		s.Line(49, 19, 47, 38, cIce3)
+		s.Line(44, 46, 54, 48, cGold3)
+		s.Rect(47, 48, 4, 7, cWood1)
+		s.FillCircle(49, 56, 2, cGold3)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "hero_knight.png"), 4)
+	}
+	{
+		s := NewSprite64()
+		// A pointed, wide-brimmed hat sits over a readable face and mantle.
+		s.FillTriangle(24, 16, 30, 3, 39, 16, cVoid1)
+		s.Line(25, 14, 30, 4, cVoid3)
+		s.Pset(30, 3, cIce4)
+		s.Line(18, 16, 45, 16, cVoid0)
+		s.Line(20, 15, 43, 15, cVoid3)
+		s.Rect(23, 16, 18, 13, cVoid0)
+		s.Rect(26, 17, 12, 9, cWood2)
+		s.Rect(27, 18, 9, 5, cWood3)
+		s.Rect(26, 22, 12, 5, cVoid0) // shadowed lower face
+		s.Rect(27, 20, 3, 2, cIce4)
+		s.Rect(35, 20, 3, 2, cIce4)
+		s.Pset(29, 20, cVoid3)
+		s.Pset(37, 20, cVoid3)
+		s.Line(28, 25, 36, 25, cGold2)
+		// Split cloak with flared cloth and a bright inner lining.
+		s.FillTriangle(22, 29, 42, 29, 52, 57, cVoid0)
+		s.FillTriangle(22, 29, 52, 57, 12, 57, cVoid1)
+		s.FillTriangle(27, 33, 37, 33, 43, 54, cVoid2)
+		s.FillTriangle(27, 33, 43, 54, 21, 54, cVoid1)
+		s.Rect(16, 30, 8, 8, cVoid2)
+		s.Rect(40, 30, 8, 8, cVoid2)
+		s.Line(17, 34, 13, 43, cVoid3)
+		s.Line(47, 34, 51, 43, cVoid3)
+		s.Line(24, 31, 23, 51, cGold2)
+		s.Line(40, 31, 41, 51, cGold2)
+		s.Line(31, 33, 31, 52, cIce3)
+		s.Line(32, 33, 32, 52, cIce2)
+		s.FillCircle(32, 41, 6, cGold1)
+		s.FillCircle(32, 41, 4, cVoid3)
+		s.FillCircle(32, 41, 2, cIce4)
+		s.Line(24, 48, 28, 51, cVoid4)
+		s.Line(40, 48, 36, 51, cVoid4)
+		s.Rect(19, 56, 10, 5, cObsidian0)
+		s.Rect(35, 56, 10, 5, cObsidian0)
+		s.Line(19, 60, 28, 60, cSteel3)
+		s.Line(35, 60, 44, 60, cSteel3)
+		// rune staff with a faceted crystal
+		s.ThickLine(53, 10, 53, 58, 2, cWood1)
+		s.Line(53, 14, 53, 47, cWood3)
+		s.FillCircle(53, 9, 7, cGold1)
+		s.FillCircle(53, 9, 5, cVoid2)
+		s.FillTriangle(49, 10, 53, 2, 57, 10, cVoid3)
+		s.Pset(53, 4, cIce4)
+		s.Pset(50, 9, cVoid4)
+		s.Pset(56, 9, cIce4)
+		s.Line(49, 16, 57, 16, cGold3)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "hero_mage.png"), 4)
+	}
+	{
+		s := NewSprite64()
+		// Asymmetric hood, mask and short red scarf
+		s.Rect(20, 11, 19, 14, cObsidian0)
+		s.Rect(17, 16, 23, 9, cObsidian1)
+		s.Rect(24, 19, 14, 8, cWood1)
+		s.Rect(24, 21, 5, 2, cBlood4)
+		s.Rect(34, 21, 4, 2, cBlood4)
+		s.FillTriangle(20, 17, 39, 17, 30, 8, cObsidian2)
+		s.Line(21, 16, 29, 9, cObsidian4)
+		s.Line(39, 16, 33, 10, cBlood2)
+		s.Rect(26, 24, 11, 3, cObsidian0) // shadow veil
+		s.Line(18, 19, 11, 28, cBlood1)
+		s.Rect(13, 27, 10, 23, cBlood0)
+		s.Rect(24, 26, 17, 18, cObsidian1)
+		s.Rect(27, 29, 12, 12, cBlood1)
+		s.FillTriangle(24, 28, 41, 28, 32, 43, cBlood2)
+		s.FillTriangle(26, 30, 39, 30, 32, 41, cBlood1)
+		s.Line(27, 28, 39, 40, cSteel3)
+		s.Line(28, 30, 38, 40, cGold1)
+		s.Rect(30, 32, 4, 2, cGold3)
+		s.Rect(31, 37, 3, 2, cBlood4)
+		s.Rect(23, 43, 7, 15, cObsidian0)
+		s.Rect(35, 43, 7, 15, cObsidian0)
+		s.Rect(20, 56, 11, 5, cSteel1)
+		s.Rect(34, 56, 11, 5, cSteel1)
+		s.Line(22, 57, 28, 57, cSteel3)
+		s.Line(36, 57, 43, 57, cSteel3)
+		s.Rect(22, 40, 22, 3, cGold1)
+		// paired daggers, aimed outward
+		s.ThickLine(14, 29, 6, 15, 2, cSteel3)
+		s.Line(7, 15, 10, 19, cIce4)
+		s.Rect(12, 29, 5, 3, cWood2)
+		s.ThickLine(45, 30, 55, 16, 2, cSteel4)
+		s.Line(54, 15, 51, 20, cBlood4)
+		s.Rect(43, 30, 5, 3, cWood2)
+		s.Pset(29, 36, cGold3)
+		s.Pset(36, 36, cGold3)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "hero_rogue.png"), 4)
+	}
+	{
+		s := NewSprite64()
+		// Ranger hood, face wrap, shoulder mantle and leather travel gear
+		s.Rect(22, 9, 17, 16, cWood1)
+		s.Rect(19, 15, 22, 10, cWood2)
+		s.Rect(24, 18, 13, 7, cObsidian0)
+		s.Rect(26, 19, 3, 2, cIce3)
+		s.Rect(34, 19, 3, 2, cIce3)
+		s.FillTriangle(21, 18, 40, 18, 30, 8, cWood3)
+		s.Line(22, 17, 29, 10, cWood4)
+		s.Line(40, 17, 35, 11, cWood1)
+		s.Rect(24, 22, 14, 4, cObsidian1) // face scarf
+		s.Line(25, 22, 37, 22, cSteel3)
+		s.Rect(17, 25, 29, 19, cWood0)
+		s.Rect(21, 27, 21, 14, cWood2)
+		s.FillTriangle(18, 27, 45, 27, 32, 45, cWood3)
+		s.FillTriangle(21, 29, 42, 29, 32, 42, cWood2)
+		s.Line(21, 27, 39, 41, cGold3)
+		s.Line(23, 28, 40, 42, cWood4)
+		s.Rect(27, 32, 9, 3, cObsidian1)
+		s.Rect(30, 31, 5, 5, cGold2)
+		s.Pset(32, 33, cIce4)
+		s.Rect(20, 42, 9, 15, cWood1)
+		s.Rect(35, 42, 9, 15, cWood1)
+		s.Rect(18, 55, 13, 5, cObsidian0)
+		s.Rect(34, 55, 13, 5, cObsidian0)
+		s.Line(19, 56, 28, 56, cWood4)
+		s.Line(35, 56, 44, 56, cWood4)
+		s.Rect(16, 29, 6, 17, cWood3)
+		// quiver and arrow feathers
+		s.Rect(42, 24, 7, 19, cBlood0)
+		s.Rect(44, 26, 3, 13, cWood3)
+		s.Line(43, 29, 47, 29, cGold2)
+		s.Line(43, 23, 41, 15, cSteel3)
+		s.Line(46, 23, 46, 13, cIce4)
+		s.Line(49, 23, 52, 15, cSteel3)
+		// tall recurved bow and taut string
+		s.Line(11, 11, 7, 31, cWood3)
+		s.Line(7, 31, 11, 52, cWood2)
+		s.Line(11, 11, 16, 31, cWood1)
+		s.Line(16, 31, 11, 52, cWood1)
+		s.Line(11, 11, 11, 52, cIce3)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "hero_ranger.png"), 4)
+	}
+
+	// Elemental spirits have distinct silhouettes and readable focal details.
+	{
+		s := NewSprite64()
+		// Tapered ember body, layered flame tongues, and a hot inner core.
+		s.FillTriangle(21, 35, 43, 35, 32, 59, cFire0)
+		s.FillTriangle(22, 38, 42, 38, 32, 54, cFire1)
+		s.FillTriangle(25, 40, 39, 40, 32, 51, cFire2)
+		s.FillTriangle(18, 37, 26, 21, 29, 42, cFire1)
+		s.FillTriangle(22, 30, 27, 18, 31, 40, cFire3)
+		s.FillTriangle(36, 41, 39, 20, 47, 34, cFire1)
+		s.FillTriangle(35, 39, 39, 15, 43, 33, cFire2)
+		s.FillTriangle(27, 26, 31, 10, 34, 28, cFire3)
+		s.FillTriangle(33, 27, 41, 7, 39, 29, cFire2)
+		s.FillCircle(32, 33, 11, cFire2)
+		s.FillCircle(32, 32, 8, cFire3)
+		s.FillCircle(32, 33, 5, cFire4)
+		s.Rect(26, 30, 4, 3, cObsidian0)
+		s.Rect(36, 30, 4, 3, cObsidian0)
+		s.Pset(27, 30, cGold4)
+		s.Pset(37, 30, cGold4)
+		s.Line(27, 37, 32, 39, cFire0)
+		s.Line(37, 37, 32, 39, cFire0)
+		s.ThickLine(22, 39, 14, 34, 2, cFire2)
+		s.ThickLine(42, 39, 50, 33, 2, cFire2)
+		s.FillCircle(13, 33, 3, cFire3)
+		s.FillCircle(51, 32, 3, cFire3)
+		s.Pset(13, 32, cFire4)
+		s.Pset(51, 31, cFire4)
+		s.Line(28, 46, 25, 51, cFire4)
+		s.Line(36, 48, 39, 53, cFire4)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "summon_fire.png"), 4)
+	}
+	{
+		s := NewSprite64()
+		// Broad rock silhouette, planted feet and a glowing core
+		s.Rect(14, 25, 10, 15, cBone0)
+		s.Rect(40, 24, 10, 17, cBone0)
+		s.Rect(20, 16, 25, 10, cBone1)
+		s.Rect(16, 24, 33, 18, cBone2)
+		s.Rect(20, 39, 25, 12, cBone1)
+		s.Rect(18, 48, 12, 10, cBone0)
+		s.Rect(34, 48, 13, 10, cBone0)
+		s.Rect(20, 55, 13, 5, cBone2)
+		s.Rect(33, 55, 15, 5, cBone2)
+		// faceted head and amber eyes
+		s.Rect(23, 8, 18, 11, cBone0)
+		s.Rect(26, 10, 12, 8, cBone2)
+		s.Rect(25, 14, 4, 3, cFire3)
+		s.Rect(35, 14, 4, 3, cFire3)
+		s.Pset(26, 14, cFire4)
+		s.Pset(36, 14, cFire4)
+		s.Line(29, 19, 25, 24, cBone3)
+		s.Line(36, 19, 41, 24, cBone1)
+		// cracks, moss and chest sigil
+		s.Line(18, 30, 24, 34, cBone0)
+		s.Line(45, 29, 39, 34, cBone0)
+		s.Line(21, 25, 25, 31, cBone3)
+		s.Line(42, 25, 39, 31, cBone3)
+		s.Line(18, 40, 24, 43, cBone3)
+		s.Line(46, 40, 40, 44, cBone3)
+		s.Line(21, 47, 25, 52, cBone3)
+		s.Line(42, 47, 39, 53, cBone3)
+		s.Rect(28, 29, 10, 10, cBone0)
+		s.FillCircle(33, 34, 4, cGold2)
+		s.Pset(33, 34, cFire4)
+		s.Line(32, 25, 35, 28, cBone4)
+		s.Line(34, 28, 31, 31, cBone3)
+		s.Rect(12, 34, 4, 10, cBone1)
+		s.Rect(48, 34, 4, 10, cBone1)
+		s.Rect(12, 43, 8, 5, cBone0)
+		s.Rect(46, 43, 8, 5, cBone0)
+		s.Rect(18, 27, 4, 3, cVenom2)
+		s.Rect(42, 38, 4, 3, cVenom2)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "summon_earth.png"), 4)
+	}
+	{
+		s := NewSprite64()
+		// Water elemental with a droplet head and layered curling wave body
+		s.Line(24, 24, 32, 10, cIce2)
+		s.Line(32, 10, 41, 24, cIce3)
+		s.Rect(23, 22, 19, 11, cIce2)
+		s.Rect(25, 25, 15, 7, cIce3)
+		s.Rect(28, 27, 3, 2, cIce0)
+		s.Rect(36, 27, 3, 2, cIce0)
+		s.FillTriangle(22, 31, 42, 31, 50, 48, cIce1)
+		s.FillTriangle(22, 31, 50, 48, 32, 56, cIce2)
+		s.FillTriangle(22, 31, 32, 56, 13, 48, cIce2)
+		s.FillTriangle(25, 35, 39, 35, 43, 47, cIce3)
+		s.FillTriangle(25, 35, 43, 47, 32, 52, cIce2)
+		s.FillTriangle(25, 35, 32, 52, 20, 47, cIce3)
+		s.Line(13, 49, 8, 56, cIce3)
+		s.Line(45, 49, 54, 56, cIce3)
+		s.Line(24, 36, 38, 36, cIce4)
+		s.Line(19, 43, 26, 46, cIce4)
+		s.Line(37, 45, 45, 41, cIce4)
+		s.Pset(21, 42, cIce4)
+		s.Pset(44, 43, cIce4)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "summon_water.png"), 4)
+	}
+	{
+		s := NewSprite64()
+		// Wind spirit: airy mask surrounded by crossing gust ribbons
+		s.ThickLine(12, 20, 23, 24, 2, cIce2)
+		s.ThickLine(23, 24, 28, 31, 2, cIce3)
+		s.ThickLine(52, 18, 41, 23, 2, cSteel4)
+		s.ThickLine(41, 23, 37, 31, 2, cIce3)
+		s.ThickLine(10, 43, 22, 39, 2, cIce2)
+		s.ThickLine(22, 39, 27, 33, 2, cIce3)
+		s.ThickLine(54, 45, 42, 39, 2, cSteel4)
+		s.ThickLine(42, 39, 37, 33, 2, cIce3)
+		s.Rect(25, 25, 14, 16, cIce1)
+		s.Rect(28, 28, 8, 9, cIce3)
+		s.Rect(28, 31, 3, 2, cObsidian0)
+		s.Rect(34, 31, 3, 2, cObsidian0)
+		s.Pset(30, 31, cIce4)
+		s.Pset(36, 31, cIce4)
+		s.Line(31, 8, 27, 17, cIce4)
+		s.Line(34, 8, 39, 17, cIce3)
+		s.Line(20, 52, 28, 47, cIce3)
+		s.Line(44, 52, 36, 47, cSteel4)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "summon_wind.png"), 4)
+	}
+	{
+		s := NewSprite64()
+		// Spellbook with a visible spine, inset frame, four elemental seals.
+		s.Rect(13, 17, 37, 35, cWood0)
+		s.Rect(17, 14, 30, 39, cGold1)
+		s.Rect(19, 17, 25, 33, cObsidian1)
+		s.Rect(22, 20, 19, 27, cVoid0)
+		s.Rect(17, 14, 4, 39, cWood3)
+		s.Line(20, 17, 20, 52, cGold3)
+		s.Line(22, 18, 44, 18, cGold2)
+		s.Line(22, 51, 44, 51, cGold2)
+		s.FillCircle(28, 27, 4, cFire2)
+		s.FillCircle(38, 27, 4, cBone2)
+		s.FillCircle(28, 40, 4, cIce2)
+		s.FillCircle(38, 40, 4, cIce3)
+		s.Pset(28, 26, cFire4)
+		s.Pset(38, 26, cGold3)
+		s.Pset(28, 39, cIce4)
+		s.Pset(38, 39, cIce4)
+		s.Rect(48, 31, 4, 9, cGold2)
+		s.Pset(50, 34, cFire4)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "elemental_grimoire.png"), 4)
+	}
+	{
+		s := NewSprite64()
+		// Travel flask with metal cap and luminous wind glyph inside.
+		s.Rect(28, 9, 9, 7, cGold2)
+		s.Rect(25, 15, 15, 7, cIce3)
+		s.Rect(21, 21, 23, 29, cIce1)
+		s.Rect(18, 28, 29, 19, cIce2)
+		s.Rect(22, 45, 21, 7, cIce1)
+		s.Rect(25, 23, 15, 24, cIce3)
+		s.Rect(28, 27, 9, 15, cIce1)
+		s.ThickLine(29, 37, 35, 30, 2, cIce4)
+		s.Pset(34, 29, cIce4)
+		s.Rect(23, 29, 3, 11, cIce4)
+		s.Pset(43, 32, cGold4)
+		s.Pset(17, 25, cIce3)
+		s.AddOutline(cOut)
+		_ = s.SavePNG(filepath.Join(dir, "wind_draught.png"), 4)
+	}
 }
 
 // =========================================================================
@@ -333,8 +709,8 @@ func genHero64(path string) {
 	// Broadsword in Hand
 	s.ThickLine(48, 10, 48, 46, 2, cSteel4)
 	s.ThickLine(49, 12, 49, 44, 2, cSteel2)
-	s.Line(44, 46, 52, 46, cGold3) // crossguard
-	s.Rect(47, 47, 3, 5, cWood0)  // grip
+	s.Line(44, 46, 52, 46, cGold3)  // crossguard
+	s.Rect(47, 47, 3, 5, cWood0)    // grip
 	s.FillCircle(48, 54, 2, cGold3) // pommel
 	// Runic etchings on blade
 	s.Line(48, 18, 48, 36, cIce3)

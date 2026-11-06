@@ -6,7 +6,12 @@
     "type": "weapon",
     "rarity": "common",
     "slot": "weapon",
-    "stats": { "attack": 3, "defense": 0, "max_hp": 0, "speed": 0 },
+    "stats": {
+      "attack": 3,
+      "defense": 0,
+      "max_hp": 0,
+      "speed": 0
+    },
     "effect": null,
     "price": 10,
     "stackable": false,
@@ -16,7 +21,11 @@
     "skill_name": "Heavy Slash",
     "skill_cost": 4,
     "skill_desc": "ฟันอย่างแรงด้วยน้ำหนักดาบเต็มพิกัด สร้างความเสียหายรุนแรง",
-    "skill_target": "single"
+    "skill_target": "single",
+    "ability_type": "active",
+    "ability_name": "Heavy Slash",
+    "ability_desc": "โจมตีเดี่ยวอย่างหนัก",
+    "class": "knight"
   },
   {
     "id": "iron_sword",
@@ -25,7 +34,12 @@
     "type": "weapon",
     "rarity": "common",
     "slot": "weapon",
-    "stats": { "attack": 5, "defense": 0, "max_hp": 0, "speed": 0 },
+    "stats": {
+      "attack": 5,
+      "defense": 0,
+      "max_hp": 0,
+      "speed": 0
+    },
     "effect": null,
     "price": 32,
     "stackable": false,
@@ -35,7 +49,11 @@
     "skill_name": "Shield Bash",
     "skill_cost": 5,
     "skill_desc": "กระแทกศัตรูด้วยดาบและโล่ สร้างความเสียหายตาม ATK+DEF",
-    "skill_target": "single"
+    "skill_target": "single",
+    "ability_type": "active",
+    "ability_name": "Shield Bash",
+    "ability_desc": "โจมตีเดี่ยวและเตรียมโล่รับการโจมตีถัดไป",
+    "class": "knight"
   },
   {
     "id": "knights_claymore",
@@ -44,7 +62,12 @@
     "type": "weapon",
     "rarity": "rare",
     "slot": "weapon",
-    "stats": { "attack": 10, "defense": 2, "max_hp": 20, "speed": -1 },
+    "stats": {
+      "attack": 10,
+      "defense": 2,
+      "max_hp": 20,
+      "speed": -1
+    },
     "effect": null,
     "price": 68,
     "stackable": false,
@@ -53,8 +76,13 @@
     "archetype": "sword",
     "skill_name": "Cleave",
     "skill_cost": 7,
-    "skill_desc": "เหวี่ยงดาบยักษ์กวาดศัตรูทุกตัวในฉากพร้อมกัน",
-    "skill_target": "aoe"
+    "skill_desc": "กวาดโจมตีเป้าหมายและศัตรูที่อยู่ติดกัน",
+    "skill_target": "adjacent",
+    "two_handed": true,
+    "ability_type": "active",
+    "ability_name": "Cleave",
+    "ability_desc": "กวาดโจมตีเป้าหมายและศัตรูที่อยู่ติดกัน",
+    "class": "knight"
   },
   {
     "id": "flamebrand",
@@ -63,7 +91,12 @@
     "type": "weapon",
     "rarity": "epic",
     "slot": "weapon",
-    "stats": { "attack": 15, "defense": 2, "max_hp": 30, "speed": 0 },
+    "stats": {
+      "attack": 15,
+      "defense": 2,
+      "max_hp": 30,
+      "speed": 0
+    },
     "effect": null,
     "price": 125,
     "stackable": false,
@@ -73,7 +106,12 @@
     "skill_name": "Inferno Strike",
     "skill_cost": 9,
     "skill_desc": "ปลดปล่อยคลื่นเพลิงลาวาเผาผลาญศัตรูทุกตัว",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "two_handed": true,
+    "ability_type": "active",
+    "ability_name": "Inferno Strike",
+    "ability_desc": "โจมตีหมู่ด้วยเปลวเพลิง",
+    "class": "knight"
   },
   {
     "id": "excalibur",
@@ -82,7 +120,12 @@
     "type": "weapon",
     "rarity": "legendary",
     "slot": "weapon",
-    "stats": { "attack": 21, "defense": 4, "max_hp": 45, "speed": 2 },
+    "stats": {
+      "attack": 21,
+      "defense": 4,
+      "max_hp": 45,
+      "speed": 2
+    },
     "effect": null,
     "price": 210,
     "stackable": false,
@@ -92,7 +135,11 @@
     "skill_name": "Holy Verdict",
     "skill_cost": 11,
     "skill_desc": "พิพากษาด้วยลำแสงศักดิ์สิทธิ์ทำลายล้างศัตรูทั้งหมด",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "ability_type": "active",
+    "ability_name": "Holy Verdict",
+    "ability_desc": "โจมตีหมู่ด้วยพลังศักดิ์สิทธิ์",
+    "class": "knight"
   },
   {
     "id": "apprentice_staff",
@@ -101,7 +148,13 @@
     "type": "weapon",
     "rarity": "common",
     "slot": "weapon",
-    "stats": { "attack": 5, "defense": 0, "max_hp": 0, "max_mp": 15, "speed": 1 },
+    "stats": {
+      "attack": 5,
+      "defense": 0,
+      "max_hp": 0,
+      "max_mp": 15,
+      "speed": 1
+    },
     "effect": null,
     "price": 30,
     "stackable": false,
@@ -111,7 +164,11 @@
     "skill_name": "Arcane Spark",
     "skill_cost": 5,
     "skill_desc": "ยิงศรเวทมนตร์เจาะทะลุเกราะศัตรู",
-    "skill_target": "single"
+    "skill_target": "single",
+    "class": "mage",
+    "ability_type": "active",
+    "ability_name": "Arcane Spark",
+    "ability_desc": "ยิงศรเวทมนตร์เจาะทะลุเกราะศัตรู"
   },
   {
     "id": "wooden_staff",
@@ -120,7 +177,13 @@
     "type": "weapon",
     "rarity": "common",
     "slot": "weapon",
-    "stats": { "attack": 8, "defense": 1, "max_hp": 10, "max_mp": 20, "speed": 1 },
+    "stats": {
+      "attack": 8,
+      "defense": 1,
+      "max_hp": 10,
+      "max_mp": 20,
+      "speed": 1
+    },
     "effect": null,
     "price": 48,
     "stackable": false,
@@ -130,7 +193,11 @@
     "skill_name": "Arcane Pulse",
     "skill_cost": 6,
     "skill_desc": "ปล่อยคลื่นพลังเวทกระแทกศัตรูทุกตัว",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "class": "mage",
+    "ability_type": "active",
+    "ability_name": "Arcane Pulse",
+    "ability_desc": "ปล่อยคลื่นพลังเวทกระแทกศัตรูทุกตัว"
   },
   {
     "id": "crystal_wand",
@@ -139,7 +206,13 @@
     "type": "weapon",
     "rarity": "rare",
     "slot": "weapon",
-    "stats": { "attack": 11, "defense": 1, "max_hp": 15, "max_mp": 25, "speed": 2 },
+    "stats": {
+      "attack": 11,
+      "defense": 1,
+      "max_hp": 15,
+      "max_mp": 25,
+      "speed": 2
+    },
     "effect": null,
     "price": 72,
     "stackable": false,
@@ -149,7 +222,11 @@
     "skill_name": "Chain Lightning",
     "skill_cost": 8,
     "skill_desc": "สายฟ้าฟาดชิ่งทำลายศัตรูทุกตัวในฉาก",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "class": "mage",
+    "ability_type": "active",
+    "ability_name": "Chain Lightning",
+    "ability_desc": "สายฟ้าฟาดชิ่งทำลายศัตรูทุกตัวในฉาก"
   },
   {
     "id": "archmage_staff",
@@ -158,7 +235,13 @@
     "type": "weapon",
     "rarity": "epic",
     "slot": "weapon",
-    "stats": { "attack": 15, "defense": 2, "max_hp": 25, "max_mp": 35, "speed": 2 },
+    "stats": {
+      "attack": 15,
+      "defense": 2,
+      "max_hp": 25,
+      "max_mp": 35,
+      "speed": 2
+    },
     "effect": null,
     "price": 130,
     "stackable": false,
@@ -168,7 +251,11 @@
     "skill_name": "Emerald Tempest",
     "skill_cost": 10,
     "skill_desc": "พายุเวทมรกตถล่มศัตรูทั้งหมดอย่างรุนแรง",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "class": "mage",
+    "ability_type": "active",
+    "ability_name": "Emerald Tempest",
+    "ability_desc": "พายุเวทมรกตถล่มศัตรูทั้งหมดอย่างรุนแรง"
   },
   {
     "id": "void_scepter",
@@ -177,7 +264,13 @@
     "type": "weapon",
     "rarity": "legendary",
     "slot": "weapon",
-    "stats": { "attack": 20, "defense": 2, "max_hp": 35, "max_mp": 50, "speed": 3 },
+    "stats": {
+      "attack": 20,
+      "defense": 2,
+      "max_hp": 35,
+      "max_mp": 50,
+      "speed": 3
+    },
     "effect": null,
     "price": 210,
     "stackable": false,
@@ -187,7 +280,40 @@
     "skill_name": "Void Singularity",
     "skill_cost": 12,
     "skill_desc": "เปิดหลุมดำอเวจีบดขยี้ศัตรูทุกตัวในพริบตา",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "class": "mage",
+    "ability_type": "active",
+    "ability_name": "Void Singularity",
+    "ability_desc": "เปิดหลุมดำอเวจีบดขยี้ศัตรูทุกตัวในพริบตา"
+  },
+  {
+    "id": "elemental_grimoire",
+    "name": "Fourfold Spirit Grimoire",
+    "description": "สมุดเวทสี่ปฐมธาตุ เรียกสปิริตไฟ ดิน น้ำ หรือลมแบบสุ่ม",
+    "type": "weapon",
+    "rarity": "rare",
+    "slot": "weapon",
+    "stats": {
+      "attack": 4,
+      "defense": 0,
+      "max_hp": 0,
+      "max_mp": 15,
+      "speed": 0
+    },
+    "effect": null,
+    "price": 78,
+    "stackable": false,
+    "max_stack": 1,
+    "usable_in_combat": false,
+    "archetype": "staff",
+    "skill_name": "Fourfold Spirit Pact",
+    "skill_cost": 9,
+    "skill_desc": "สุ่มอัญเชิญสปิริตหนึ่งธาตุ ผู้ช่วยโจมตี ป้องกัน หรือฟื้นฟูตามธาตุ",
+    "skill_target": "single",
+    "ability_type": "active",
+    "ability_name": "Fourfold Spirit Pact",
+    "ability_desc": "อัญเชิญสปิริตธาตุแบบสุ่ม มีได้ครั้งละหนึ่งตน",
+    "class": "mage"
   },
   {
     "id": "iron_dagger",
@@ -196,7 +322,12 @@
     "type": "weapon",
     "rarity": "common",
     "slot": "weapon",
-    "stats": { "attack": 5, "defense": 0, "max_hp": 0, "speed": 3 },
+    "stats": {
+      "attack": 5,
+      "defense": 0,
+      "max_hp": 0,
+      "speed": 3
+    },
     "effect": null,
     "price": 30,
     "stackable": false,
@@ -206,7 +337,11 @@
     "skill_name": "Quick Stab",
     "skill_cost": 5,
     "skill_desc": "พุ่งแทงจุดตายด้วยความเร็วสูง",
-    "skill_target": "single"
+    "skill_target": "single",
+    "class": "rogue",
+    "ability_type": "active",
+    "ability_name": "Quick Stab",
+    "ability_desc": "พุ่งแทงจุดตายด้วยความเร็วสูง"
   },
   {
     "id": "assassins_twinblades",
@@ -215,7 +350,12 @@
     "type": "weapon",
     "rarity": "rare",
     "slot": "weapon",
-    "stats": { "attack": 9, "defense": 1, "max_hp": 10, "speed": 4 },
+    "stats": {
+      "attack": 9,
+      "defense": 1,
+      "max_hp": 10,
+      "speed": 4
+    },
     "effect": null,
     "price": 65,
     "stackable": false,
@@ -225,7 +365,11 @@
     "skill_name": "Twin Lacerate",
     "skill_cost": 6,
     "skill_desc": "เฉือนคู่ด้วยมีดสองมือฉีกเกราะเป้าหมาย",
-    "skill_target": "single"
+    "skill_target": "single",
+    "class": "rogue",
+    "ability_type": "active",
+    "ability_name": "Twin Lacerate",
+    "ability_desc": "เฉือนคู่ด้วยมีดสองมือฉีกเกราะเป้าหมาย"
   },
   {
     "id": "shadowfang",
@@ -234,7 +378,12 @@
     "type": "weapon",
     "rarity": "epic",
     "slot": "weapon",
-    "stats": { "attack": 13, "defense": 1, "max_hp": 15, "speed": 5 },
+    "stats": {
+      "attack": 13,
+      "defense": 1,
+      "max_hp": 15,
+      "speed": 5
+    },
     "effect": null,
     "price": 120,
     "stackable": false,
@@ -244,7 +393,11 @@
     "skill_name": "Venom Flurry",
     "skill_cost": 8,
     "skill_desc": "ระดมแทงพิษร้ายแรงใส่เป้าหมายเดี่ยว",
-    "skill_target": "single"
+    "skill_target": "single",
+    "class": "rogue",
+    "ability_type": "active",
+    "ability_name": "Venom Flurry",
+    "ability_desc": "ระดมแทงพิษร้ายแรงใส่เป้าหมายเดี่ยว"
   },
   {
     "id": "grim_scythe",
@@ -253,7 +406,12 @@
     "type": "weapon",
     "rarity": "legendary",
     "slot": "weapon",
-    "stats": { "attack": 19, "defense": 2, "max_hp": 30, "speed": 5 },
+    "stats": {
+      "attack": 19,
+      "defense": 2,
+      "max_hp": 30,
+      "speed": 5
+    },
     "effect": null,
     "price": 205,
     "stackable": false,
@@ -263,7 +421,11 @@
     "skill_name": "Soul Reap",
     "skill_cost": 10,
     "skill_desc": "ตวัดเคียววิญญาณกวาดล้างศัตรูทุกตัวในฉาก",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "class": "rogue",
+    "ability_type": "active",
+    "ability_name": "Soul Reap",
+    "ability_desc": "ตวัดเคียววิญญาณกวาดล้างศัตรูทุกตัวในฉาก"
   },
   {
     "id": "hunting_bow",
@@ -272,7 +434,12 @@
     "type": "weapon",
     "rarity": "common",
     "slot": "weapon",
-    "stats": { "attack": 5, "defense": 0, "max_hp": 5, "speed": 2 },
+    "stats": {
+      "attack": 5,
+      "defense": 0,
+      "max_hp": 5,
+      "speed": 2
+    },
     "effect": null,
     "price": 32,
     "stackable": false,
@@ -282,7 +449,11 @@
     "skill_name": "Piercing Shot",
     "skill_cost": 5,
     "skill_desc": "ยิงศรทะลวงจุดอ่อนเพิกเฉยต่อเกราะศัตรู",
-    "skill_target": "single"
+    "skill_target": "single",
+    "class": "ranger",
+    "ability_type": "active",
+    "ability_name": "Piercing Shot",
+    "ability_desc": "ยิงศรทะลวงจุดอ่อนเพิกเฉยต่อเกราะศัตรู"
   },
   {
     "id": "elven_recurve",
@@ -291,7 +462,12 @@
     "type": "weapon",
     "rarity": "rare",
     "slot": "weapon",
-    "stats": { "attack": 10, "defense": 1, "max_hp": 15, "speed": 3 },
+    "stats": {
+      "attack": 10,
+      "defense": 1,
+      "max_hp": 15,
+      "speed": 3
+    },
     "effect": null,
     "price": 72,
     "stackable": false,
@@ -301,7 +477,11 @@
     "skill_name": "Rain of Arrows",
     "skill_cost": 7,
     "skill_desc": "ระดมยิงห่าฝนธนูใส่ศัตรูทุกตัวพร้อมกัน",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "class": "ranger",
+    "ability_type": "active",
+    "ability_name": "Rain of Arrows",
+    "ability_desc": "ระดมยิงห่าฝนธนูใส่ศัตรูทุกตัวพร้อมกัน"
   },
   {
     "id": "windrunner_bow",
@@ -310,7 +490,12 @@
     "type": "weapon",
     "rarity": "epic",
     "slot": "weapon",
-    "stats": { "attack": 14, "defense": 1, "max_hp": 20, "speed": 5 },
+    "stats": {
+      "attack": 14,
+      "defense": 1,
+      "max_hp": 20,
+      "speed": 5
+    },
     "effect": null,
     "price": 128,
     "stackable": false,
@@ -320,7 +505,11 @@
     "skill_name": "Gale Volley",
     "skill_cost": 9,
     "skill_desc": "พายุลูกศรวายุทะลวงศัตรูทุกตัวในสนามรบ",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "class": "ranger",
+    "ability_type": "active",
+    "ability_name": "Gale Volley",
+    "ability_desc": "พายุลูกศรวายุทะลวงศัตรูทุกตัวในสนามรบ"
   },
   {
     "id": "dragons_breath_bow",
@@ -329,7 +518,12 @@
     "type": "weapon",
     "rarity": "legendary",
     "slot": "weapon",
-    "stats": { "attack": 20, "defense": 2, "max_hp": 35, "speed": 4 },
+    "stats": {
+      "attack": 20,
+      "defense": 2,
+      "max_hp": 35,
+      "speed": 4
+    },
     "effect": null,
     "price": 210,
     "stackable": false,
@@ -339,7 +533,11 @@
     "skill_name": "Dragon Piercer",
     "skill_cost": 11,
     "skill_desc": "ยิงศรเพลิงมังกรระเบิดทำลายศัตรูทั้งหมด",
-    "skill_target": "aoe"
+    "skill_target": "aoe",
+    "class": "ranger",
+    "ability_type": "active",
+    "ability_name": "Dragon Piercer",
+    "ability_desc": "ยิงศรเพลิงมังกรระเบิดทำลายศัตรูทั้งหมด"
   },
   {
     "id": "cloth_armor",
@@ -348,12 +546,24 @@
     "type": "armor",
     "rarity": "common",
     "slot": "armor",
-    "stats": { "attack": 0, "defense": 1, "max_hp": 0, "speed": 0 },
+    "stats": {
+      "attack": 0,
+      "defense": 1,
+      "max_hp": 0,
+      "speed": 0
+    },
     "effect": null,
     "price": 12,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Nimble Weave",
+    "ability_desc": "ชุดผ้าคล่องตัว มีโอกาสหลบการโจมตีเดี่ยว 5%",
+    "ability_effect": {
+      "type": "evasion",
+      "value": 5
+    }
   },
   {
     "id": "iron_armor",
@@ -362,12 +572,24 @@
     "type": "armor",
     "rarity": "common",
     "slot": "armor",
-    "stats": { "attack": 0, "defense": 2, "max_hp": 20, "speed": 0 },
+    "stats": {
+      "attack": 0,
+      "defense": 2,
+      "max_hp": 20,
+      "speed": 0
+    },
     "effect": null,
     "price": 35,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Iron Resolve",
+    "ability_desc": "ลดความเสียหายจากท่าหนัก 15%",
+    "ability_effect": {
+      "type": "heavy_reduction",
+      "value": 15
+    }
   },
   {
     "id": "chainmail_hauberk",
@@ -376,12 +598,24 @@
     "type": "armor",
     "rarity": "rare",
     "slot": "armor",
-    "stats": { "attack": 1, "defense": 3, "max_hp": 30, "speed": 0 },
+    "stats": {
+      "attack": 1,
+      "defense": 3,
+      "max_hp": 30,
+      "speed": 0
+    },
     "effect": null,
     "price": 70,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Toxin-Woven Links",
+    "ability_desc": "ลดโอกาสติดพิษลงครึ่งหนึ่ง",
+    "ability_effect": {
+      "type": "poison_resist",
+      "value": 50
+    }
   },
   {
     "id": "dragonscale_armor",
@@ -390,12 +624,24 @@
     "type": "armor",
     "rarity": "epic",
     "slot": "armor",
-    "stats": { "attack": 2, "defense": 5, "max_hp": 55, "speed": 0 },
+    "stats": {
+      "attack": 2,
+      "defense": 5,
+      "max_hp": 55,
+      "speed": 0
+    },
     "effect": null,
     "price": 145,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Draconic Scales",
+    "ability_desc": "ลดความเสียหายจากการโจมตีหมู่ 15%",
+    "ability_effect": {
+      "type": "aoe_reduction",
+      "value": 15
+    }
   },
   {
     "id": "leather_cap",
@@ -404,12 +650,24 @@
     "type": "helmet",
     "rarity": "common",
     "slot": "helmet",
-    "stats": { "attack": 0, "defense": 1, "max_hp": 12, "speed": 1 },
+    "stats": {
+      "attack": 0,
+      "defense": 1,
+      "max_hp": 12,
+      "speed": 1
+    },
     "effect": null,
     "price": 22,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Ranger's Reflex",
+    "ability_desc": "มีโอกาสหลบการโจมตีเดี่ยว 8%",
+    "ability_effect": {
+      "type": "evasion",
+      "value": 8
+    }
   },
   {
     "id": "iron_helm",
@@ -418,12 +676,24 @@
     "type": "helmet",
     "rarity": "rare",
     "slot": "helmet",
-    "stats": { "attack": 1, "defense": 2, "max_hp": 22, "speed": 0 },
+    "stats": {
+      "attack": 1,
+      "defense": 2,
+      "max_hp": 22,
+      "speed": 0
+    },
     "effect": null,
     "price": 50,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "First Impact",
+    "ability_desc": "ลดความเสียหายจากการโจมตีโดนตัวครั้งแรกในการต่อสู้ 50%",
+    "ability_effect": {
+      "type": "first_hit_reduction",
+      "value": 50
+    }
   },
   {
     "id": "shadow_cowl",
@@ -432,12 +702,25 @@
     "type": "helmet",
     "rarity": "rare",
     "slot": "helmet",
-    "stats": { "attack": 2, "defense": 1, "max_hp": 15, "max_mp": 10, "speed": 3 },
+    "stats": {
+      "attack": 2,
+      "defense": 1,
+      "max_hp": 15,
+      "max_mp": 10,
+      "speed": 3
+    },
     "effect": null,
     "price": 58,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Killer Instinct",
+    "ability_desc": "โจรได้โอกาสคริติคอลเพิ่ม 8 จุดเปอร์เซ็นต์",
+    "ability_effect": {
+      "type": "rogue_crit",
+      "value": 8
+    }
   },
   {
     "id": "crown_of_kings",
@@ -446,54 +729,103 @@
     "type": "helmet",
     "rarity": "legendary",
     "slot": "helmet",
-    "stats": { "attack": 4, "defense": 3, "max_hp": 35, "max_mp": 25, "speed": 2 },
+    "stats": {
+      "attack": 4,
+      "defense": 3,
+      "max_hp": 35,
+      "max_mp": 25,
+      "speed": 2
+    },
     "effect": null,
     "price": 165,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Royal Arcanum",
+    "ability_desc": "เพิ่มความเสียหายจากสกิลอาวุธ 8%",
+    "ability_effect": {
+      "type": "skill_damage",
+      "value": 8
+    }
   },
   {
     "id": "wooden_shield",
     "name": "Wooden Shield",
     "description": "โล่ไม้เสริมขอบเหล็ก (+1 DEF, +12 HP)",
-    "type": "accessory",
+    "type": "offhand",
     "rarity": "common",
-    "slot": "accessory",
-    "stats": { "attack": 0, "defense": 1, "max_hp": 12, "speed": 0 },
+    "slot": "offhand",
+    "stats": {
+      "attack": 0,
+      "defense": 1,
+      "max_hp": 12,
+      "speed": 0
+    },
     "effect": null,
     "price": 22,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "active",
+    "ability_name": "Brace",
+    "ability_desc": "ตั้งรับแล้วสร้างบาเรียรับความเสียหาย 8 หน่วย",
+    "ability_effect": {
+      "type": "guard_barrier",
+      "value": 8
+    }
   },
   {
     "id": "iron_shield",
     "name": "Iron Shield",
     "description": "โล่เหล็กสลักกางเขน (+2 DEF, +25 HP)",
-    "type": "accessory",
+    "type": "offhand",
     "rarity": "rare",
-    "slot": "accessory",
-    "stats": { "attack": 0, "defense": 2, "max_hp": 25, "speed": 0 },
+    "slot": "offhand",
+    "stats": {
+      "attack": 0,
+      "defense": 2,
+      "max_hp": 25,
+      "speed": 0
+    },
     "effect": null,
     "price": 52,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "active",
+    "ability_name": "Iron Guard",
+    "ability_desc": "ตั้งรับแล้วสร้างบาเรียรับความเสียหาย 14 หน่วย",
+    "ability_effect": {
+      "type": "guard_barrier",
+      "value": 14
+    }
   },
   {
     "id": "aegis_shield",
     "name": "Aegis Shield",
     "description": "โล่สุริยันทองคำในตำนาน (+4 DEF, +45 HP, +2 ATK)",
-    "type": "accessory",
+    "type": "offhand",
     "rarity": "legendary",
-    "slot": "accessory",
-    "stats": { "attack": 2, "defense": 4, "max_hp": 45, "speed": 0 },
+    "slot": "offhand",
+    "stats": {
+      "attack": 2,
+      "defense": 4,
+      "max_hp": 45,
+      "speed": 0
+    },
     "effect": null,
     "price": 160,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "active",
+    "ability_name": "Aegis Wall",
+    "ability_desc": "ตั้งรับแล้วสร้างบาเรียรับความเสียหาย 20 หน่วย",
+    "ability_effect": {
+      "type": "guard_barrier",
+      "value": 20
+    }
   },
   {
     "id": "bronze_ring",
@@ -502,12 +834,24 @@
     "type": "accessory",
     "rarity": "common",
     "slot": "accessory",
-    "stats": { "attack": 2, "defense": 0, "max_hp": 5, "speed": 0 },
+    "stats": {
+      "attack": 2,
+      "defense": 0,
+      "max_hp": 5,
+      "speed": 0
+    },
     "effect": null,
     "price": 18,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Guarding Sigil",
+    "ability_desc": "เพิ่มบาเรียจากการตั้งรับอีก 3 หน่วย",
+    "ability_effect": {
+      "type": "guard_barrier",
+      "value": 3
+    }
   },
   {
     "id": "apprentice_ring",
@@ -516,12 +860,25 @@
     "type": "accessory",
     "rarity": "common",
     "slot": "accessory",
-    "stats": { "attack": 2, "defense": 0, "max_hp": 5, "max_mp": 15, "speed": 1 },
+    "stats": {
+      "attack": 2,
+      "defense": 0,
+      "max_hp": 5,
+      "max_mp": 15,
+      "speed": 1
+    },
     "effect": null,
     "price": 24,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Mana Conduit",
+    "ability_desc": "ลดค่า MP ของสกิลอาวุธ 1 หน่วย (ขั้นต่ำ 1)",
+    "ability_effect": {
+      "type": "skill_cost",
+      "value": 1
+    }
   },
   {
     "id": "quiver_charm",
@@ -530,12 +887,24 @@
     "type": "accessory",
     "rarity": "common",
     "slot": "accessory",
-    "stats": { "attack": 2, "defense": 1, "max_hp": 5, "speed": 2 },
+    "stats": {
+      "attack": 2,
+      "defense": 1,
+      "max_hp": 5,
+      "speed": 2
+    },
     "effect": null,
     "price": 24,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Hunter's Mark",
+    "ability_desc": "เรนเจอร์ได้โอกาสตีซ้ำเพิ่ม 5 จุดเปอร์เซ็นต์",
+    "ability_effect": {
+      "type": "ranger_followup",
+      "value": 5
+    }
   },
   {
     "id": "swift_boots",
@@ -544,12 +913,24 @@
     "type": "accessory",
     "rarity": "common",
     "slot": "accessory",
-    "stats": { "attack": 1, "defense": 0, "max_hp": 5, "speed": 3 },
+    "stats": {
+      "attack": 1,
+      "defense": 0,
+      "max_hp": 5,
+      "speed": 3
+    },
     "effect": null,
     "price": 24,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Quickstep",
+    "ability_desc": "เพิ่มโอกาสตีซ้ำจากความเร็ว 3 จุดเปอร์เซ็นต์",
+    "ability_effect": {
+      "type": "followup",
+      "value": 3
+    }
   },
   {
     "id": "boots_of_haste",
@@ -558,12 +939,27 @@
     "type": "accessory",
     "rarity": "rare",
     "slot": "accessory",
-    "stats": { "attack": 2, "defense": 1, "max_hp": 12, "speed": 4 },
+    "stats": {
+      "attack": 2,
+      "defense": 1,
+      "max_hp": 12,
+      "speed": 4
+    },
     "effect": null,
     "price": 58,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "active",
+    "ability_name": "Wind Step",
+    "ability_desc": "Active: ใช้ 4 MP เพิ่ม SPD 4 เป็นเวลา 2 รอบ (คูลดาวน์ 3 รอบ)",
+    "ability_effect": {
+      "type": "speed_buff",
+      "value": 4,
+      "duration": 2
+    },
+    "ability_cost": 4,
+    "ability_cooldown": 3
   },
   {
     "id": "thiefs_coin",
@@ -572,12 +968,24 @@
     "type": "accessory",
     "rarity": "rare",
     "slot": "accessory",
-    "stats": { "attack": 3, "defense": 0, "max_hp": 10, "speed": 3 },
+    "stats": {
+      "attack": 3,
+      "defense": 0,
+      "max_hp": 10,
+      "speed": 3
+    },
     "effect": null,
     "price": 58,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Fortune's Cut",
+    "ability_desc": "เพิ่มทองที่ได้จากชัยชนะ 15%",
+    "ability_effect": {
+      "type": "gold_bonus",
+      "value": 15
+    }
   },
   {
     "id": "blood_chalice",
@@ -586,12 +994,25 @@
     "type": "accessory",
     "rarity": "epic",
     "slot": "accessory",
-    "stats": { "attack": 3, "defense": 1, "max_hp": 35, "max_mp": 15, "speed": 1 },
+    "stats": {
+      "attack": 3,
+      "defense": 1,
+      "max_hp": 35,
+      "max_mp": 15,
+      "speed": 1
+    },
     "effect": null,
     "price": 95,
     "stackable": false,
     "max_stack": 1,
-    "usable_in_combat": false
+    "usable_in_combat": false,
+    "ability_type": "passive",
+    "ability_name": "Sanguine Harvest",
+    "ability_desc": "ดูดเลือด 8% จากความเสียหายที่สร้างด้วยการโจมตีและสกิล",
+    "ability_effect": {
+      "type": "lifesteal",
+      "value": 8
+    }
   },
   {
     "id": "health_potion",
@@ -600,12 +1021,22 @@
     "type": "consumable",
     "rarity": "common",
     "slot": "",
-    "stats": { "attack": 0, "defense": 0, "max_hp": 0 },
-    "effect": { "type": "heal", "value": 35 },
+    "stats": {
+      "attack": 0,
+      "defense": 0,
+      "max_hp": 0
+    },
+    "effect": {
+      "type": "heal",
+      "value": 35
+    },
     "price": 14,
     "stackable": true,
     "max_stack": 5,
-    "usable_in_combat": true
+    "usable_in_combat": true,
+    "ability_type": "active",
+    "ability_name": "Health Potion",
+    "ability_desc": "น้ำยาฟื้นฟูพลังชีวิต +35 HP"
   },
   {
     "id": "greater_health_potion",
@@ -614,12 +1045,22 @@
     "type": "consumable",
     "rarity": "rare",
     "slot": "",
-    "stats": { "attack": 0, "defense": 0, "max_hp": 0 },
-    "effect": { "type": "heal", "value": 75 },
+    "stats": {
+      "attack": 0,
+      "defense": 0,
+      "max_hp": 0
+    },
+    "effect": {
+      "type": "heal",
+      "value": 75
+    },
     "price": 32,
     "stackable": true,
     "max_stack": 5,
-    "usable_in_combat": true
+    "usable_in_combat": true,
+    "ability_type": "active",
+    "ability_name": "Greater Health Potion",
+    "ability_desc": "น้ำยาฟื้นฟูพลังชีวิตขั้นสูง +75 HP"
   },
   {
     "id": "mana_potion",
@@ -628,12 +1069,46 @@
     "type": "consumable",
     "rarity": "common",
     "slot": "",
-    "stats": { "attack": 0, "defense": 0, "max_hp": 0 },
-    "effect": { "type": "heal_mp", "value": 25 },
+    "stats": {
+      "attack": 0,
+      "defense": 0,
+      "max_hp": 0
+    },
+    "effect": {
+      "type": "heal_mp",
+      "value": 25
+    },
     "price": 14,
     "stackable": true,
     "max_stack": 5,
-    "usable_in_combat": true
+    "usable_in_combat": true,
+    "ability_type": "active",
+    "ability_name": "Mana Potion",
+    "ability_desc": "น้ำยาฟื้นฟูมานา +25 MP"
+  },
+  {
+    "id": "wind_draught",
+    "name": "Windrunner Draught",
+    "description": "ยาน้ำวายุ เพิ่ม SPD +4 ชั่วคราว 2 รอบ ใช้ระหว่างต่อสู้",
+    "type": "consumable",
+    "rarity": "uncommon",
+    "slot": "",
+    "stats": {
+      "attack": 0,
+      "defense": 0,
+      "max_hp": 0
+    },
+    "effect": {
+      "type": "speed_buff",
+      "value": 4
+    },
+    "price": 24,
+    "stackable": true,
+    "max_stack": 5,
+    "usable_in_combat": true,
+    "ability_type": "active",
+    "ability_name": "Wind Step",
+    "ability_desc": "เพิ่ม SPD +4 ชั่วคราว 2 รอบ"
   },
   {
     "id": "greater_mana_potion",
@@ -642,12 +1117,22 @@
     "type": "consumable",
     "rarity": "rare",
     "slot": "",
-    "stats": { "attack": 0, "defense": 0, "max_hp": 0 },
-    "effect": { "type": "heal_mp", "value": 50 },
+    "stats": {
+      "attack": 0,
+      "defense": 0,
+      "max_hp": 0
+    },
+    "effect": {
+      "type": "heal_mp",
+      "value": 50
+    },
     "price": 30,
     "stackable": true,
     "max_stack": 5,
-    "usable_in_combat": true
+    "usable_in_combat": true,
+    "ability_type": "active",
+    "ability_name": "Greater Mana Potion",
+    "ability_desc": "น้ำยาฟื้นฟูมานาขั้นสูง +50 MP"
   },
   {
     "id": "fire_bomb",
@@ -656,12 +1141,22 @@
     "type": "consumable",
     "rarity": "rare",
     "slot": "",
-    "stats": { "attack": 0, "defense": 0, "max_hp": 0 },
-    "effect": { "type": "damage_aoe", "value": 30 },
+    "stats": {
+      "attack": 0,
+      "defense": 0,
+      "max_hp": 0
+    },
+    "effect": {
+      "type": "damage_aoe",
+      "value": 30
+    },
     "price": 24,
     "stackable": true,
     "max_stack": 5,
-    "usable_in_combat": true
+    "usable_in_combat": true,
+    "ability_type": "active",
+    "ability_name": "Fire Bomb",
+    "ability_desc": "ระเบิดเพลิงสังหาร สร้างความเสียหาย 30 แก่ศัตรูทุกตัวโดยไม่คิดเกราะ"
   },
   {
     "id": "smoke_bomb",
@@ -670,11 +1165,21 @@
     "type": "consumable",
     "rarity": "common",
     "slot": "",
-    "stats": { "attack": 0, "defense": 0, "max_hp": 0 },
-    "effect": { "type": "smoke", "value": 1 },
+    "stats": {
+      "attack": 0,
+      "defense": 0,
+      "max_hp": 0
+    },
+    "effect": {
+      "type": "smoke",
+      "value": 1
+    },
     "price": 18,
     "stackable": true,
     "max_stack": 3,
-    "usable_in_combat": true
+    "usable_in_combat": true,
+    "ability_type": "active",
+    "ability_name": "Smoke Bomb",
+    "ability_desc": "ระเบิดควันพรางตัว หลบหนีจากห้องมอนสเตอร์ปกติหรืออีลีทได้ 100%"
   }
 ]

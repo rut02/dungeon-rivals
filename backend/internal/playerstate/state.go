@@ -25,6 +25,7 @@ type Stack struct {
 
 type Equipment struct {
 	Weapon      string    `json:"weapon"`
+	Offhand     string    `json:"offhand,omitempty"`
 	Armor       string    `json:"armor"`
 	Helmet      string    `json:"helmet"`
 	Accessories [2]string `json:"accessories"`
@@ -127,7 +128,7 @@ func NewWithKit(catalog *items.Catalog, kit string) (*State, error) {
 			Score:     0,
 			Kit:       "mage",
 			Inventory: []Stack{{ItemID: "health_potion", Quantity: 1}, {ItemID: "mana_potion", Quantity: 1}},
-			Equipment: Equipment{Weapon: "apprentice_staff", Armor: "", Accessories: [2]string{"", ""}},
+			Equipment: Equipment{Weapon: "elemental_grimoire", Armor: "", Accessories: [2]string{"", ""}},
 		}
 	case "rogue":
 		s = &State{
@@ -336,14 +337,42 @@ func (s *State) Equip(itemID, slot string, catalog *items.Catalog) error {
 	if item.Type == items.Consumable || item.Slot != slot {
 		return ErrInvalidSlot
 	}
+	if item.Type == items.Weapon {
+		kit := s.Kit
+		if kit == "default" || kit == "warrior" || kit == "" {
+			kit = "knight"
+		}
+		class := item.Class
+		if class == "" {
+			class = map[string]string{"sword": "knight", "staff": "mage", "daggers": "rogue", "bow": "ranger"}[item.Archetype]
+		}
+		if class != "" && class != kit {
+			return ErrInvalidSlot
+		}
+	}
+	if item.Slot == string(items.SlotOffhand) {
+		weapon, ok := catalog.Get(s.Equipment.Weapon)
+		if ok && weapon.TwoHanded {
+			return ErrInvalidSlot
+		}
+	}
 	working := append([]Stack(nil), s.Inventory...)
 	if err := remove(&working, itemID, 1); err != nil {
 		return err
 	}
 	var old string
+	oldOffhand := ""
 	switch items.Slot(slot) {
 	case items.SlotWeapon:
 		old = s.Equipment.Weapon
+		if item.TwoHanded && s.Equipment.Offhand != "" {
+			oldOffhand = s.Equipment.Offhand
+			if err := add(&working, oldOffhand, 1, catalog); err != nil {
+				return err
+			}
+		}
+	case items.SlotOffhand:
+		old = s.Equipment.Offhand
 	case items.SlotArmor:
 		old = s.Equipment.Armor
 	case items.SlotHelmet:
@@ -370,6 +399,9 @@ func (s *State) Equip(itemID, slot string, catalog *items.Catalog) error {
 			return err
 		}
 	}
+	if oldOffhand != "" {
+		s.Equipment.Offhand = ""
+	}
 	s.setSlot(slot, itemID, 0)
 	s.Inventory = working
 	s.clampHP(catalog)
@@ -394,6 +426,8 @@ func (s *State) Unequip(slot string, index *int, catalog *items.Catalog) error {
 		switch items.Slot(slot) {
 		case items.SlotWeapon:
 			itemID = s.Equipment.Weapon
+		case items.SlotOffhand:
+			itemID = s.Equipment.Offhand
 		case items.SlotArmor:
 			itemID = s.Equipment.Armor
 		case items.SlotHelmet:
@@ -550,7 +584,7 @@ func findStack(inventory []Stack, itemID string) (int, *Stack) {
 }
 
 func (s *State) equippedIDs() []string {
-	return []string{s.Equipment.Weapon, s.Equipment.Armor, s.Equipment.Helmet, s.Equipment.Accessories[0], s.Equipment.Accessories[1]}
+	return []string{s.Equipment.Weapon, s.Equipment.Offhand, s.Equipment.Armor, s.Equipment.Helmet, s.Equipment.Accessories[0], s.Equipment.Accessories[1]}
 }
 
 func (s *State) clampHP(catalog *items.Catalog) {
@@ -564,6 +598,8 @@ func (s *State) setSlot(slot, itemID string, index int) {
 	switch items.Slot(slot) {
 	case items.SlotWeapon:
 		s.Equipment.Weapon = itemID
+	case items.SlotOffhand:
+		s.Equipment.Offhand = itemID
 	case items.SlotArmor:
 		s.Equipment.Armor = itemID
 	case items.SlotHelmet:

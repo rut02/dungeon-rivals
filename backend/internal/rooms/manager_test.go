@@ -179,8 +179,13 @@ func TestDungeonMoveIsIndependentPerPlayer(t *testing.T) {
 		t.Fatal(err)
 	}
 	hostDungeon := findPlayer(r, host.PlayerID).Dungeon
-	start := hostDungeon.Floors[0].Nodes[0]
-	if err := m.ServeCommand(r, host.PlayerID, nil, "dungeon.move", map[string]any{"node_id": start.Connections[0]}); err != nil {
+	targetID := hostDungeon.Floors[0].Nodes[0].Connections[0]
+	for i := range hostDungeon.Floors[0].Nodes {
+		if hostDungeon.Floors[0].Nodes[i].ID == targetID {
+			hostDungeon.Floors[0].Nodes[i].Type = dungeon.MonsterRoom
+		}
+	}
+	if err := m.ServeCommand(r, host.PlayerID, nil, "dungeon.move", map[string]any{"node_id": targetID}); err != nil {
 		t.Fatal(err)
 	}
 	if hostDungeon.ActiveNodeID == "" {
@@ -221,12 +226,15 @@ func TestCombatRewardsAndRespawnRules(t *testing.T) {
 		t.Fatal("combat encounter did not start")
 	}
 	p.Combat.HP = 1
-	for i := 0; i < 1; i++ {
+	for i := range p.Combat.Enemies {
+		p.Combat.Enemies[i].HP = 1
+	}
+	for !p.Combat.Finished {
 		if err := m.combatAction(r, host.PlayerID, "ATTACK", ""); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if !p.Combat.Finished || p.Dungeon.ActiveNodeID != "" || p.State.Score != 10 || p.State.Gold < 24 {
+	if !p.Combat.Finished || p.Dungeon.ActiveNodeID != "" || (p.State.Score != 10 && p.State.Score != 15) || p.State.Gold < 24 {
 		t.Fatalf("victory not resolved: combat=%+v score=%d gold=%d map=%+v", p.Combat, p.State.Score, p.State.Gold, p.Dungeon)
 	}
 	if floor.Nodes[1].Status != dungeon.Cleared && floor.Nodes[2].Status != dungeon.Cleared { // identify exact target below
@@ -264,12 +272,18 @@ func TestPvEDeathRespawnsWithoutRewardAndReopensNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.Combat.Attack = 200
+	for i := range p.Combat.Enemies {
+		p.Combat.Enemies[i].Attack = 200
+		p.Combat.Enemies[i].HP = 500
+	}
 	p.State.HP = 1
-	if err := m.combatAction(r, host.PlayerID, "ATTACK", ""); err != nil {
-		t.Fatal(err)
+	for !p.Combat.Finished {
+		if err := m.combatAction(r, host.PlayerID, "ATTACK", ""); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if p.State.Deaths != 1 || p.State.HP != 50 || p.State.Gold != 16 || p.State.Score != 0 || p.Dungeon.ActiveNodeID != "" || p.Dungeon.CurrentNodeID != p.Dungeon.CheckpointNodeID {
-		t.Fatalf("respawn state invalid: player=%+v dungeon=%+v", p.State, p.Dungeon)
+		t.Fatalf("respawn state invalid: player=%+v dungeon=%+v log=%v", p.State, p.Dungeon, p.Combat.Log)
 	}
 	index := 0
 	for i, node := range floor.Nodes {
@@ -503,6 +517,7 @@ func TestRoundRobinFinishesEveryPairBeforeResults(t *testing.T) {
 		}
 		target := findPlayer(r, targetID)
 		target.State.HP = 1
+		target.State.Equipment = playerstate.Equipment{}
 		if err := m.pvpAction(r, actor.ID, "ATTACK", targetID, ""); err != nil {
 			t.Fatal(err)
 		}

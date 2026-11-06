@@ -17,11 +17,13 @@ const (
 	Armor         Type = "armor"
 	Helmet        Type = "helmet"
 	Accessory     Type = "accessory"
+	Offhand       Type = "offhand"
 	Consumable    Type = "consumable"
 	SlotWeapon    Slot = "weapon"
 	SlotArmor     Slot = "armor"
 	SlotHelmet    Slot = "helmet"
 	SlotAccessory Slot = "accessory"
+	SlotOffhand   Slot = "offhand"
 )
 
 type Stats struct {
@@ -37,24 +39,38 @@ type Effect struct {
 	Value int    `json:"value"`
 }
 
+type AbilityEffect struct {
+	Type     string `json:"type"`
+	Value    int    `json:"value"`
+	Duration int    `json:"duration,omitempty"`
+}
+
 type Definition struct {
-	ID             string  `json:"id"`
-	Name           string  `json:"name"`
-	Description    string  `json:"description"`
-	Type           Type    `json:"type"`
-	Rarity         string  `json:"rarity"`
-	Slot           string  `json:"slot"`
-	Stats          Stats   `json:"stats"`
-	Effect         *Effect `json:"effect"`
-	Price          int     `json:"price"`
-	Stackable      bool    `json:"stackable"`
-	MaxStack       int     `json:"max_stack"`
-	UsableInCombat bool    `json:"usable_in_combat"`
-	Archetype      string  `json:"archetype,omitempty"`
-	SkillName      string  `json:"skill_name,omitempty"`
-	SkillCost      int     `json:"skill_cost,omitempty"`
-	SkillDesc      string  `json:"skill_desc,omitempty"`
-	SkillTarget    string  `json:"skill_target,omitempty"`
+	ID              string         `json:"id"`
+	Name            string         `json:"name"`
+	Description     string         `json:"description"`
+	Type            Type           `json:"type"`
+	Rarity          string         `json:"rarity"`
+	Slot            string         `json:"slot"`
+	Stats           Stats          `json:"stats"`
+	Effect          *Effect        `json:"effect"`
+	Price           int            `json:"price"`
+	Stackable       bool           `json:"stackable"`
+	MaxStack        int            `json:"max_stack"`
+	UsableInCombat  bool           `json:"usable_in_combat"`
+	Archetype       string         `json:"archetype,omitempty"`
+	Class           string         `json:"class,omitempty"`
+	SkillName       string         `json:"skill_name,omitempty"`
+	SkillCost       int            `json:"skill_cost,omitempty"`
+	SkillDesc       string         `json:"skill_desc,omitempty"`
+	SkillTarget     string         `json:"skill_target,omitempty"`
+	TwoHanded       bool           `json:"two_handed,omitempty"`
+	AbilityType     string         `json:"ability_type,omitempty"`
+	AbilityName     string         `json:"ability_name,omitempty"`
+	AbilityDesc     string         `json:"ability_desc,omitempty"`
+	AbilityEffect   *AbilityEffect `json:"ability_effect,omitempty"`
+	AbilityCost     int            `json:"ability_cost,omitempty"`
+	AbilityCooldown int            `json:"ability_cooldown,omitempty"`
 }
 
 type Catalog struct{ byID map[string]Definition }
@@ -97,10 +113,11 @@ func (c *Catalog) ValidateStartingItems() error {
 		{"iron_armor", Armor, "armor"},
 		{"health_potion", Consumable, ""},
 		{"apprentice_staff", Weapon, "weapon"},
+		{"elemental_grimoire", Weapon, "weapon"},
 		{"mana_potion", Consumable, ""},
 		{"iron_dagger", Weapon, "weapon"},
 		{"hunting_bow", Weapon, "weapon"},
-		{"wooden_shield", Accessory, "accessory"},
+		{"wooden_shield", Offhand, "offhand"},
 		{"apprentice_ring", Accessory, "accessory"},
 		{"swift_boots", Accessory, "accessory"},
 		{"quiver_charm", Accessory, "accessory"},
@@ -151,7 +168,7 @@ func validate(item Definition) error {
 	if item.ID == "" || item.Name == "" {
 		return fmt.Errorf("id and name are required")
 	}
-	if item.Rarity != "common" && item.Rarity != "rare" && item.Rarity != "epic" && item.Rarity != "legendary" {
+	if item.Rarity != "common" && item.Rarity != "uncommon" && item.Rarity != "rare" && item.Rarity != "epic" && item.Rarity != "legendary" {
 		return fmt.Errorf("invalid rarity %q", item.Rarity)
 	}
 	if item.Price < 0 || item.Stats.Attack < 0 || item.Stats.Defense < 0 || item.Stats.MaxHP < 0 || item.Stats.MaxMP < 0 {
@@ -180,6 +197,10 @@ func validate(item Definition) error {
 		if item.Slot != "accessory" {
 			return fmt.Errorf("accessory must use accessory slot")
 		}
+	case Offhand:
+		if item.Slot != "offhand" {
+			return fmt.Errorf("offhand item must use offhand slot")
+		}
 	case Consumable:
 		if item.Slot != "" {
 			return fmt.Errorf("consumable must not have an equipment slot")
@@ -193,6 +214,18 @@ func validate(item Definition) error {
 		}
 	default:
 		return fmt.Errorf("invalid item type %q", item.Type)
+	}
+	if item.Type != Consumable && item.AbilityType != "" && item.AbilityType != "active" && item.AbilityType != "passive" {
+		return fmt.Errorf("invalid ability type %q", item.AbilityType)
+	}
+	if item.AbilityEffect != nil && (item.AbilityEffect.Type == "" || item.AbilityEffect.Value < 0 || item.AbilityEffect.Duration < 0) {
+		return fmt.Errorf("invalid ability effect")
+	}
+	if item.AbilityCost < 0 || item.AbilityCooldown < 0 {
+		return fmt.Errorf("ability cost and cooldown cannot be negative")
+	}
+	if item.TwoHanded && item.Type != Weapon {
+		return fmt.Errorf("only weapons can be two-handed")
 	}
 	if item.Type != Consumable && item.Effect != nil {
 		return fmt.Errorf("equipment cannot define a consumable effect")

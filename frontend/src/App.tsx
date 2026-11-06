@@ -11,7 +11,7 @@ type ItemDefinition = {
   id: string
   name: string
   description: string
-  type: 'weapon' | 'armor' | 'helmet' | 'accessory' | 'consumable'
+  type: 'weapon' | 'armor' | 'helmet' | 'accessory' | 'offhand' | 'consumable'
   rarity: string
   slot: string
   stats: { attack: number; defense: number; max_hp: number; speed?: number; max_mp?: number }
@@ -25,6 +25,14 @@ type ItemDefinition = {
   skill_cost?: number
   skill_desc?: string
   skill_target?: string
+  two_handed?: boolean
+  class?: string
+  ability_type?: 'active' | 'passive'
+  ability_name?: string
+  ability_desc?: string
+  ability_effect?: { type: string; value: number; duration?: number }
+  ability_cost?: number
+  ability_cooldown?: number
 }
 
 type DungeonNode = { id: string; floor: number; depth: number; type: string; status: string; path_lane?: string; connections: string[] }
@@ -51,7 +59,11 @@ type EnemyView = {
   intent: string
   intent_value: number
   alive: boolean
+  aoe_chance?: number
 }
+
+type SummonView = { element: 'fire' | 'earth' | 'water' | 'wind'; name: string; hp: number; max_hp: number; turns_remaining: number }
+type CombatBuffView = { name: string; stat: string; value: number; turns_remaining: number }
 
 type CombatView = {
   monster_id: string
@@ -71,6 +83,10 @@ type CombatView = {
   turn?: number
   first_strike?: boolean
   skill_cooldown?: number
+  summon?: SummonView
+  player_buffs?: CombatBuffView[]
+  player_status?: string
+  equipment_cooldowns?: Record<string, number>
 }
 
 type ActivityView = {
@@ -118,7 +134,7 @@ type PrivateState = {
   deaths: number
   kit?: string
   inventory: { item_id: string; quantity: number }[]
-  equipment: { weapon: string; armor: string; helmet: string; accessories: [string, string] }
+  equipment: { weapon: string; offhand?: string; armor: string; helmet: string; accessories: [string, string] }
   dungeon?: DungeonView
   combat?: CombatView
   activity?: ActivityView
@@ -137,6 +153,17 @@ type PrivateState = {
   pvp_total_bouts?: number
   pvp_log?: string[]
   pvp_bouts?: PvPBoutView[]
+  pvp_temp_spd?: number
+  pvp_temp_spd_turns?: number
+  pvp_equipment_cooldowns?: Record<string, number>
+}
+
+function equippedAbilityValue(equipment: PrivateState['equipment'], catalog: ItemDefinition[], effectType: string): number {
+  const ids = [equipment.weapon, equipment.offhand || '', equipment.armor, equipment.helmet, ...equipment.accessories]
+  return ids.reduce((total, id) => {
+    const effect = catalog.find((item) => item.id === id)?.ability_effect
+    return total + (effect?.type === effectType ? effect.value : 0)
+  }, 0)
 }
 
 type PublicPlayer = Player & {
@@ -220,28 +247,28 @@ const STARTER_KITS = [
   {
     id: 'knight',
     name: 'อัศวิน (Knight)',
-    archetype: 'ดาบยาว (Sword)',
+    archetype: 'ดาบมือเดียว & โล่',
     icon: '🛡️',
     weaponId: 'iron_sword',
     weaponName: 'Iron Sword (ดาบเหล็กกล้า)',
     gearIds: [],
     gearNames: 'พกพาเฉพาะอาวุธเริ่มต้น + 1x Health Potion, 1x Mana Potion (เกราะและของอื่นต้องฟาร์มในดันเจียน)',
-    description: 'สมดุล แข็งแกร่ง เลือดเยอะ ตั้งรับลดดาเมจ 70% พร้อมสะท้อนดาเมจ',
-    perk: '🛡️ สกิล Shield Bash (5 MP): ผสานพลัง ATK+DEF กระแทกศัตรูรุนแรง (คูลดาวน์ 2 เทิร์น)',
+    description: 'อึดและยืดหยุ่น ตั้งรับได้ดี เปลี่ยนเป็นดาบใหญ่สองมือเพื่อกวาดศัตรูข้างเคียง',
+    perk: '🛡️ Shield Bash: โจมตีเดี่ยวพร้อมเตรียมรับการโจมตีครั้งถัดไป',
     stats: 'HP 110 · MP 25 · ATK 11 · DEF 4 · SPD 6',
   },
   {
     id: 'mage',
     name: 'นักเวท (Mage)',
-    archetype: 'คทาเวทมนตร์ (Staff)',
+    archetype: 'คทา / สมุดเวท (Mage)',
     icon: '🔮',
-    weaponId: 'apprentice_staff',
-    weaponName: 'Apprentice Staff (คทาฝึกหัดเวท)',
+    weaponId: 'elemental_grimoire',
+    weaponName: 'Fourfold Spirit Grimoire (สมุดเวทสี่ธาตุ)',
     gearIds: [],
     gearNames: 'พกพาเฉพาะอาวุธเริ่มต้น + 1x Health Potion, 1x Mana Potion (เกราะและของอื่นต้องฟาร์มในดันเจียน)',
-    description: 'มานาสูง โจมตีทะลุเกราะ 50% และตั้งรับกางบาเรียฟื้นฟู +8 MP',
-    perk: '🔮 สกิล Arcane Spark (5 MP): ระเบิดเวทหมู่โจมตีศัตรูทุกตัวในสนาม (คูลดาวน์ 2 เทิร์น)',
-    stats: 'HP 90 · MP 35 · ATK 13 · DEF 2 · SPD 6',
+    description: 'มานาสูง เรียกสปิริตไฟ ดิน น้ำ หรือลมแบบสุ่ม แต่ละธาตุช่วยคนละด้าน',
+    perk: '📖 Fourfold Spirit Pact (9 MP): ไฟโจมตีเดี่ยว · ดินล่อเป้า · น้ำฟื้น HP/ล้างพิษ · ลมโจมตีหมู่',
+    stats: 'HP 90 · MP 50 · ATK 14 · DEF 2 · SPD 6',
   },
   {
     id: 'rogue',
@@ -297,6 +324,7 @@ const ITEM_LORE: Record<string, string> = {
   crystal_wand: '« ไม้กายสิทธิ์หัวอเมทิสต์ ปลดปล่อยประกายดาวทะลวงพลังป้องกัน »',
   archmage_staff: '« คทาแห่งมหาจอมเวท อัญมณีมรกตลอยเคว้งด้วยอำนาจจิต »',
   void_scepter: '« เมื่อจ้องมองเข้าไปในเนตรแห่งความว่างเปล่า ความว่างเปล่าจะจ้องกลับมา »',
+  elemental_grimoire: '« หน้ากระดาษทั้งสี่ตอบรับผู้ถือครองเพียงธาตุเดียวในแต่ละครั้ง »',
   iron_dagger: '« มีดสั้นปลายแหลม คล่องแคล่วและเข้าถึงจุดตายในพริบตา »',
   shadowfang: '« คมมีดที่กรีดเฉือนไร้เสียง อาบยาพิษสกัดจากงูอเวจี »',
   assassins_twinblades: '« มีดคู่ประกบคู่ของนักฆ่าหลวง ดื่มด่ำโลหิตเพื่อความตายอันเงียบงัน »',
@@ -354,6 +382,15 @@ const MONSTER_SPRITE_FALLBACK: Record<string, string> = {}
 function getMonsterSpritePath(monsterId: string): string {
   const mapped = MONSTER_SPRITE_FALLBACK[monsterId] || monsterId
   return `/art/pixel/${mapped}.png`
+}
+
+function getHeroSpritePath(kit?: string): string {
+  const allowed = ['knight', 'mage', 'rogue', 'ranger']
+  return `/art/pixel/hero_${allowed.includes(kit || '') ? kit : 'knight'}.png`
+}
+
+function getSummonSpritePath(element: string): string {
+  return `/art/pixel/summon_${element}.png`
 }
 
 function getItemSpritePath(itemId: string): string {
@@ -1037,6 +1074,7 @@ function ItemInspectorModal({
   const rarity = item.rarity || 'common'
   const slotLabels: Record<string, string> = {
     weapon: '⚔️ อาวุธหลัก (Main Hand)',
+    offhand: '🛡️ มือรอง / โล่ (Offhand)',
     armor: '🛡️ ชุดเกราะลำตัว (Body Armor)',
     helmet: '🪖 หมวกเกราะ (Headgear)',
     accessory: '💍 เครื่องประดับเวทมนตร์ (Accessory)',
@@ -1081,19 +1119,19 @@ function ItemInspectorModal({
           </div>
 
           {/* Weapon Skill Details */}
-          {item.skill_name && (
+          {(item.skill_name || item.ability_name) && (
             <div className="inspector-skill-box">
               <div className="inspector-skill-title">
-                <span className="eyebrow">✨ สกิลประจำอาวุธ</span>
-                <strong>{item.skill_name}</strong>
-                <span className="skill-cost-pill">ใช้ {item.skill_cost || 5} MP</span>
+                <span className="eyebrow">✨ {item.ability_type === 'passive' ? 'Passive ประจำไอเท็ม' : 'Active Skill ประจำไอเท็ม'}</span>
+                <strong>{item.skill_name || item.ability_name}</strong>
+                {item.skill_cost ? <span className="skill-cost-pill">ใช้ {item.skill_cost} MP</span> : null}
               </div>
               <p className="skill-desc-text">
-                {item.skill_desc || 'ปลดปล่อยพลังการโจมตีพิเศษประจำอาวุธ'}
+                {item.skill_desc || item.ability_desc || 'ความสามารถติดตัวของไอเท็ม'}
               </p>
-              <small className="skill-target-text">
-                🎯 รูปแบบเป้าหมาย: <b>{item.skill_target === 'aoe' ? 'โจมตีศัตรูทั้งหมดในสนาม (AoE)' : 'เป้าหมายเดี่ยว'}</b>
-              </small>
+              {item.skill_target && <small className="skill-target-text">
+                🎯 รูปแบบเป้าหมาย: <b>{item.skill_target === 'aoe' ? 'โจมตีศัตรูทั้งหมดในสนาม (AoE)' : item.skill_target === 'adjacent' ? 'โจมตีเป้าหมายและศัตรูข้างเคียง' : 'เป้าหมายเดี่ยว'}</b>
+              </small>}
             </div>
           )}
 
@@ -1388,11 +1426,14 @@ function ArenaPanel({
   onCommand: (type: string, payload?: object) => void
   onOpenBag: () => void
 }) {
+  const [duelMotion, setDuelMotion] = useState<'self' | 'opponent' | null>(null)
+  const duelLogCursor = useRef(state.pvp_log?.length || 0)
   const combatItems = state.inventory.filter((stack) => {
     const def = catalog.find((item) => item.id === stack.item_id)
     return def?.type === 'consumable' && def.usable_in_combat
   })
-  const canSkill = Boolean(state.stats.weapon_skill && (state.stats.mp || 0) >= (state.stats.weapon_skill_cost || 5))
+  const arenaSkillCost = Math.max(1, (state.stats.weapon_skill_cost || 5) - equippedAbilityValue(state.equipment, catalog, 'skill_cost'))
+  const canSkill = Boolean(state.stats.weapon_skill && (state.stats.mp || 0) >= arenaSkillCost)
   const opponents = players.filter((player) => player.player_id !== me.player_id)
   const currentOpponent =
     opponents.find((p) => p.player_id === state.pvp_current_opponent_id) ||
@@ -1404,6 +1445,30 @@ function ArenaPanel({
   const isYourTurn = Boolean(state.pvp_your_turn)
   const pvpLog = state.pvp_log || []
   const pvpBouts = state.pvp_bouts || []
+  useEffect(() => {
+    const incoming = pvpLog.slice(duelLogCursor.current)
+    duelLogCursor.current = pvpLog.length
+    if (!currentOpponent || incoming.length === 0) return
+    const forSelf = (entry: string) => entry.includes(`${me.name} โจมตี`) || entry.includes(`${me.name} ใช้สกิล`) || entry.includes(`${me.name} ปาระเบิด`)
+    const forOpponent = (entry: string) => entry.includes(`${currentOpponent.name} โจมตี`) || entry.includes(`${currentOpponent.name} ใช้สกิล`) || entry.includes(`${currentOpponent.name} ปาระเบิด`)
+    const selfIndex = incoming.findIndex(forSelf)
+    const opponentIndex = incoming.findIndex(forOpponent)
+    if (selfIndex < 0 && opponentIndex < 0) return
+    const sequence: ('self' | 'opponent')[] = selfIndex >= 0 && opponentIndex >= 0
+      ? selfIndex < opponentIndex ? ['self', 'opponent'] : ['opponent', 'self']
+      : selfIndex >= 0 ? ['self'] : ['opponent']
+    const timers: number[] = []
+    sequence.forEach((motion, index) => timers.push(window.setTimeout(() => setDuelMotion(motion), index * 480)))
+    timers.push(window.setTimeout(() => setDuelMotion(null), sequence.length > 1 ? 1050 : 620))
+    return () => timers.forEach((timer) => window.clearTimeout(timer))
+  }, [pvpLog, currentOpponent?.player_id, currentOpponent?.name, me.name])
+  const activeGear = [state.equipment.offhand, ...state.equipment.accessories]
+    .map((id) => catalog.find((item) => item.id === id))
+    .find((item) => item?.ability_type === 'active' && item.ability_effect?.type === 'speed_buff')
+  const arenaSpeed = (state.stats.spd || state.stats.base_spd || 5) + (state.pvp_temp_spd_turns ? state.pvp_temp_spd || 0 : 0)
+  const opponentSpeed = currentOpponent?.spd || 5
+  const arenaFollowUpBonus = equippedAbilityValue(state.equipment, catalog, 'followup') + (state.stats.archetype === 'bow' ? equippedAbilityValue(state.equipment, catalog, 'ranger_followup') : 0)
+  const arenaFollowUpChance = Math.min(32, Math.max(0, arenaSpeed - opponentSpeed) * 4 + arenaFollowUpBonus)
 
   return (
     <section className="panel arena-panel">
@@ -1452,10 +1517,10 @@ function ArenaPanel({
       {currentOpponent && (
         <div className="pvp-duel-stage">
           {/* Left Fighter: You */}
-          <div className="duel-fighter-card is-self">
+          <div className={`duel-fighter-card is-self ${duelMotion === 'self' ? 'duel-lunge' : duelMotion === 'opponent' ? 'duel-hit' : ''}`}>
             <span className="duel-corner-badge self-badge">🛡️ ตัวละครของคุณ</span>
             <div className="duel-sprite-box">
-              <img src="/art/pixel/hero.png" alt={me.name} className="duel-giant-sprite" />
+              <img src={getHeroSpritePath(state.kit)} alt={me.name} className="duel-giant-sprite" onError={(e) => { e.currentTarget.src = '/art/pixel/hero.png' }} />
               {state.equipment.weapon && (
                 <div className="duel-weapon-float" title={state.equipment.weapon}>
                   <ItemSprite itemId={state.equipment.weapon} />
@@ -1482,12 +1547,12 @@ function ArenaPanel({
           </div>
 
           {/* Right Fighter: Current Opponent */}
-          <div className="duel-fighter-card is-rival">
+          <div className={`duel-fighter-card is-rival ${duelMotion === 'opponent' ? 'duel-lunge' : duelMotion === 'self' ? 'duel-hit' : ''}`}>
             <span className="duel-corner-badge rival-badge">
               🎯 คู่ต่อสู้ปัจจุบัน {currentOpponent.is_bot ? '· 🤖 AI BOT' : ''}
             </span>
             <div className="duel-sprite-box">
-              <img src="/art/pixel/elite_knight.png" alt={currentOpponent.name} className="duel-giant-sprite rival-Tint" />
+              <img src={getHeroSpritePath(currentOpponent.kit)} alt={currentOpponent.name} className="duel-giant-sprite rival-Tint" onError={(e) => { e.currentTarget.src = '/art/pixel/hero.png' }} />
             </div>
             <strong className="duel-fighter-name">{currentOpponent.name}</strong>
             <div className="duel-stat-badges">
@@ -1517,6 +1582,7 @@ function ArenaPanel({
         <div className="combat-actions pvp-action-bar">
           <p className="pvp-turn-status" role="status">
             {isYourTurn ? 'ตาของคุณ เลือกแอ็กชันได้เลย' : `กำลังรอ ${currentOpponent.name} เล่น`}
+            {state.pvp_temp_spd_turns ? ` · ✨ SPD +${state.pvp_temp_spd} ชั่วคราว ${state.pvp_temp_spd_turns} เทิร์น` : ''}
           </p>
           <button
             className="button button-primary"
@@ -1526,7 +1592,7 @@ function ArenaPanel({
               onCommand('pvp.action', { action: 'ATTACK', target_player_id: currentOpponent.player_id })
             }}
           >
-            ⚔️ โจมตีปกติใส่ {currentOpponent.name}
+            ⚔️ โจมตีปกติใส่ {currentOpponent.name} · SPD follow-up {arenaFollowUpChance}%
           </button>
 
           {state.stats.weapon_skill && (
@@ -1540,7 +1606,7 @@ function ArenaPanel({
               title={state.stats.weapon_skill_desc}
             >
               <span>✨ ใช้สกิลอาวุธ: {state.stats.weapon_skill}</span>
-              <span className="skill-cost-badge">{state.stats.weapon_skill_cost || 5} MP</span>
+              <span className="skill-cost-badge">{arenaSkillCost} MP</span>
             </button>
           )}
 
@@ -1552,8 +1618,23 @@ function ArenaPanel({
               onCommand('pvp.action', { action: 'DEFEND', target_player_id: currentOpponent.player_id })
             }}
           >
-            🛡️ ตั้งรับ & สวนกลับ (+8 MP)
+            🛡️ ตั้งรับ & สวนกลับ ({state.stats.archetype === 'staff' ? '+5 MP' : '+3 MP'})
           </button>
+
+          {activeGear && (
+            <button
+              className="button button-outline"
+              disabled={!isYourTurn || (state.stats.mp || 0) < (activeGear.ability_cost || 0) || (state.pvp_equipment_cooldowns?.[activeGear.id] || 0) > 0}
+              onClick={() => {
+                sound.playMagic()
+                onCommand('pvp.action', { action: 'GEAR_ABILITY', target_player_id: currentOpponent.player_id, item_id: activeGear.id })
+              }}
+              title={activeGear.ability_desc}
+            >
+              💨 {activeGear.ability_name} · SPD +{activeGear.ability_effect?.value} / {activeGear.ability_cost} MP
+              {(state.pvp_equipment_cooldowns?.[activeGear.id] || 0) > 0 ? ` · คูลดาวน์ ${state.pvp_equipment_cooldowns?.[activeGear.id]} เทิร์น` : ''}
+            </button>
+          )}
 
           {combatItems.map((item) => {
             const def = catalog.find((entry) => entry.id === item.item_id)
@@ -1646,7 +1727,7 @@ function RoomActivityPanel({
       if (!def) return true
       if (shopFilter === 'consumable') return def.type === 'consumable'
       if (shopFilter === 'weapon') return def.type === 'weapon'
-      if (shopFilter === 'armor') return def.type === 'armor' || def.type === 'helmet' || def.type === 'accessory'
+      if (shopFilter === 'armor') return def.type === 'armor' || def.type === 'helmet' || def.type === 'accessory' || def.type === 'offhand'
       return true
     })
   }, [activity.stock, shopFilter, catalog])
@@ -1725,7 +1806,7 @@ function RoomActivityPanel({
                     {def?.rarity && <span className={`rarity-pill rarity-pill-${def.rarity}`}>{def.rarity.toUpperCase()}</span>}
                   </div>
                   <p>{def?.description || 'ไอเทมสำหรับนักผจญภัย'}</p>
-                  {def?.skill_name && <small style={{ color: '#c09bff', fontWeight: 600 }}>✨ สกิล: {def.skill_name} ({def.skill_cost} MP)</small>}
+                  {def?.ability_name && <small style={{ color: '#c09bff', fontWeight: 600 }}>✨ {def.ability_type === 'active' ? 'Active' : 'Passive'}: {def.ability_name}{(def.ability_cost || def.skill_cost) ? ` (${def.ability_cost || def.skill_cost} MP)` : ''}</small>}
                   {ITEM_LORE[stock.item_id] && <small className="item-lore-quote">{ITEM_LORE[stock.item_id]}</small>}
                 </div>
                 <button
@@ -1798,12 +1879,87 @@ function CombatPanel({
 }) {
   const combat = state.combat!
   const potions = state.inventory.filter((stack) => catalog.find((item) => item.id === stack.item_id)?.type === 'consumable' && catalog.find((item) => item.id === stack.item_id)?.usable_in_combat)
+  const activeGear = [state.equipment.offhand, ...state.equipment.accessories]
+    .map((id) => catalog.find((item) => item.id === id))
+    .find((item) => item?.ability_type === 'active' && item.ability_effect?.type === 'speed_buff')
 
   const [selectedTarget, setSelectedTarget] = useState<number>(combat.selected_enemy ?? 0)
   const [vfxList, setVfxList] = useState<VFX[]>([])
   const [shake, setShake] = useState(false)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [battleMotion, setBattleMotion] = useState<'player' | 'enemy' | null>(null)
+  const [motionTarget, setMotionTarget] = useState<'hero' | 'summon' | 'both' | null>(null)
+  const [motionEnemyIndex, setMotionEnemyIndex] = useState<number | null>(null)
   const [hoveredAction, setHoveredAction] = useState<{ type: 'ATTACK' | 'SKILL' | 'FIRE_BOMB'; isAoE: boolean } | null>(null)
   const combatLogRef = useRef<HTMLDivElement>(null)
+  const animationLockRef = useRef(false)
+  const logCursorRef = useRef(combat.log.length)
+  const animationTimersRef = useRef<number[]>([])
+
+  function clearCombatAnimation() {
+    animationTimersRef.current.forEach((timer) => window.clearTimeout(timer))
+    animationTimersRef.current = []
+    animationLockRef.current = false
+    setBattleMotion(null)
+    setMotionTarget(null)
+    setMotionEnemyIndex(null)
+    setIsAnimating(false)
+  }
+
+  function scheduleAnimation(callback: () => void, delay: number) {
+    animationTimersRef.current.push(window.setTimeout(callback, delay))
+  }
+
+  function dispatchCombatAction(action: string, payload: object, targetIndex?: number) {
+    if (animationLockRef.current) return
+    animationLockRef.current = true
+    setIsAnimating(true)
+    setBattleMotion(null)
+    setMotionTarget(null)
+    setMotionEnemyIndex(targetIndex ?? null)
+    if (targetIndex !== undefined) setSelectedTarget(targetIndex)
+    scheduleAnimation(() => onCommand('combat.action', { action, ...payload }), 220)
+    scheduleAnimation(clearCombatAnimation, 1650)
+  }
+
+  useEffect(() => {
+    const incoming = combat.log.slice(logCursorRef.current)
+    logCursorRef.current = combat.log.length
+    if (!animationLockRef.current || incoming.length === 0) return
+
+    const enemyEvent = (entry: string) =>
+      entry.includes('unleashes') ||
+      (entry.includes(' dealt ') && !entry.startsWith('You dealt')) ||
+      entry.includes('โจมตีโกเลมศิลาแทนคุณ') ||
+      entry.includes('โจมตีวงกว้าง')
+    const playerEvent = (entry: string) =>
+      entry.startsWith('You dealt') || entry.startsWith('⚡ You used') || entry.startsWith('Dealt ') ||
+      entry.startsWith('Hit ') || entry.includes('Cleave') || entry.includes('สปิริตเพลิงพุ่ง') ||
+      entry.includes('SPD follow-up')
+    const enemyIndex = incoming.findIndex(enemyEvent)
+    const playerIndex = incoming.findIndex(playerEvent)
+    const enemyAttacked = enemyIndex >= 0
+    const playerAttacked = playerIndex >= 0
+
+    if (enemyAttacked || playerAttacked) {
+      const hitGolem = incoming.some((entry) => entry.includes('โจมตีโกเลมศิลาแทนคุณ'))
+      const hitBoth = incoming.some((entry) => entry.includes('unleashes an area attack') || entry.includes('โจมตีวงกว้าง'))
+      const sequence: ('player' | 'enemy')[] = enemyAttacked && playerAttacked
+        ? enemyIndex < playerIndex ? ['enemy', 'player'] : ['player', 'enemy']
+        : enemyAttacked ? ['enemy'] : ['player']
+      sequence.forEach((motion, index) => scheduleAnimation(() => {
+        setBattleMotion(motion)
+        setMotionTarget(motion === 'enemy' ? hitBoth ? 'both' : hitGolem ? 'summon' : 'hero' : null)
+      }, index * 500))
+      scheduleAnimation(clearCombatAnimation, sequence.length > 1 ? 1150 : 650)
+    } else {
+      scheduleAnimation(clearCombatAnimation, 550)
+    }
+  }, [combat.log])
+
+  useEffect(() => () => {
+    animationTimersRef.current.forEach((timer) => window.clearTimeout(timer))
+  }, [])
 
   useEffect(() => {
     if (combatLogRef.current) {
@@ -1835,8 +1991,18 @@ function CombatPanel({
   ]
 
   const activeTargetEnemy = enemies.find((e) => e.index === selectedTarget && e.alive) || enemies.find((e) => e.alive) || enemies[0]
-  const playerSpeed = state.stats.spd || state.stats.base_spd || 5
-  const isPlayerFaster = combat.first_strike || (activeTargetEnemy && playerSpeed >= activeTargetEnemy.speed)
+  const playerBaseSpeed = state.stats.spd || state.stats.base_spd || 5
+  const playerSpeed = playerBaseSpeed + (combat.player_buffs || []).filter((buff) => buff.stat === 'spd').reduce((total, buff) => total + buff.value, 0)
+  const playerActsFirst = Boolean(activeTargetEnemy && playerSpeed >= activeTargetEnemy.speed)
+  const accessoryFollowUpBonus = (state.equipment.accessories || []).reduce((total, id) => {
+    const effect = catalog.find((item) => item.id === id)?.ability_effect
+    if (effect?.type === 'followup' || (effect?.type === 'ranger_followup' && state.stats.archetype === 'bow')) return total + effect.value
+    return total
+  }, 0)
+  const playerFollowUpChance = Math.min(32, Math.max(0, playerSpeed - (activeTargetEnemy?.speed || 5)) * 4 + accessoryFollowUpBonus)
+  const enemyFollowUpChance = Math.min(32, Math.max(0, (activeTargetEnemy?.speed || 5) - playerSpeed) * 4)
+  const combatSkillCost = Math.max(1, (state.stats.weapon_skill_cost || 4) - equippedAbilityValue(state.equipment, catalog, 'skill_cost'))
+  const combatSkillATK = Math.ceil(state.stats.atk * (100 + equippedAbilityValue(state.equipment, catalog, 'skill_damage')) / 100)
 
   function calculatePredictedDamage(actionType: 'ATTACK' | 'SKILL' | 'FIRE_BOMB', enemy: typeof enemies[0]): number {
     const stats = state.stats
@@ -1851,20 +2017,20 @@ function CombatPanel({
       return Math.max(1, stats.atk - enemy.defense)
     }
     if (actionType === 'SKILL') {
-      if (stats.weapon_skill_target === 'aoe') {
+      if (stats.weapon_skill_target === 'aoe' || stats.weapon_skill_target === 'adjacent') {
         const def = stats.archetype === 'staff' ? Math.floor(enemy.defense * 0.4) : Math.floor(enemy.defense * 0.7)
-        return Math.max(1, Math.floor(stats.atk * 1.20) - def)
+        return Math.max(1, Math.floor(combatSkillATK * 1.20) - def)
       }
       if (stats.archetype === 'sword') {
-        return Math.max(1, Math.floor(stats.atk * 1.35) + stats.def - enemy.defense)
+        return Math.max(1, Math.floor(combatSkillATK * 1.35) + stats.def - enemy.defense)
       }
       if (stats.archetype === 'daggers') {
-        return Math.max(1, Math.floor(stats.atk * 1.65) - enemy.defense)
+        return Math.max(1, Math.floor(combatSkillATK * 1.65) - enemy.defense)
       }
       if (stats.archetype === 'bow' || stats.archetype === 'staff') {
-        return Math.max(1, Math.floor(stats.atk * 1.45) - Math.floor(enemy.defense / 2))
+        return Math.max(1, Math.floor(combatSkillATK * 1.45) - Math.floor(enemy.defense / 2))
       }
-      return Math.max(1, Math.floor(stats.atk * 1.40) + stats.def - enemy.defense)
+      return Math.max(1, Math.floor(combatSkillATK * 1.40) + stats.def - enemy.defense)
     }
     return 0
   }
@@ -1896,7 +2062,7 @@ function CombatPanel({
       sound.playSlash()
       triggerVFX('slash', `ฟันดาบใส่ ${activeTargetEnemy.name}!`, 'dmg-red')
     }
-    onCommand('combat.action', { action: 'ATTACK', target_enemy: activeTargetEnemy.index })
+    dispatchCombatAction('ATTACK', { target_enemy: activeTargetEnemy.index }, activeTargetEnemy.index)
   }
 
   function handleSkill() {
@@ -1917,13 +2083,19 @@ function CombatPanel({
       sound.playShield()
       triggerVFX('slash', `⚔️ ${skillName}!`, 'dmg-crit')
     }
-    onCommand('combat.action', { action: 'SKILL', target_enemy: activeTargetEnemy.index })
+    dispatchCombatAction('SKILL', { target_enemy: activeTargetEnemy.index }, activeTargetEnemy.index)
   }
 
   function handleDefend() {
     sound.playShield()
     triggerVFX('shield', '🛡️ ตั้งรับ!', 'dmg-block')
-    onCommand('combat.action', { action: 'DEFEND' })
+    dispatchCombatAction('DEFEND', {})
+  }
+
+  function handleGearAbility(item: ItemDefinition) {
+    sound.playMagic()
+    triggerVFX('shield', `💨 ${item.ability_name}: SPD +${item.ability_effect?.value} ชั่วคราว`, 'dmg-mp')
+    dispatchCombatAction('GEAR_ABILITY', { item_id: item.id })
   }
 
   function handleUseItem(itemId: string) {
@@ -1934,11 +2106,14 @@ function CombatPanel({
     } else if (item?.effect?.type === 'heal_mp') {
       sound.playMagic()
       triggerVFX('shield', `💧 ฟื้นฟู +${item.effect.value} MP!`, 'dmg-mp')
+    } else if (item?.effect?.type === 'speed_buff') {
+      sound.playMagic()
+      triggerVFX('shield', `⚡ SPD +${item.effect.value} ชั่วคราว 2 รอบ!`, 'dmg-mp')
     } else {
       sound.playShield()
       triggerVFX('shield', `❤️ ฟื้นฟู +${item?.effect?.value || 0} HP!`, 'dmg-heal')
     }
-    onCommand('combat.action', { action: 'USE_ITEM', item_id: itemId })
+    dispatchCombatAction('USE_ITEM', { item_id: itemId })
   }
 
   // Server sets combat.victory = true only on genuine victory; on death combat.victory is false!
@@ -1976,13 +2151,11 @@ function CombatPanel({
 
       {/* Speed & Initiative Turn Order Banner */}
       <div className="turn-order-banner">
-        <div className={`speed-indicator ${isPlayerFaster ? 'faster' : 'slower'}`}>
-          {combat.first_strike ? (
-            <span>🎯 <strong>Ranger First Strike!</strong> คุณเปิดฉากยิงฟรีในเทิร์นแรกเรียบร้อยแล้ว</span>
-          ) : isPlayerFaster ? (
-            <span>⚡ <strong>ความเร็วเหนือกว่า!</strong> (SPD ของคุณ {playerSpeed} vs ศัตรู {activeTargetEnemy?.speed || 5}) คุณได้โจมตีก่อน</span>
+        <div className={`speed-indicator ${playerActsFirst ? 'faster' : 'slower'}`}>
+          {playerActsFirst ? (
+            <span>⚡ <strong>{playerSpeed === (activeTargetEnemy?.speed || 5) ? 'SPD เท่ากัน · คุณเริ่มก่อน' : 'ความเร็วเหนือกว่า!'}</strong> (SPD {playerSpeed} vs ศัตรู {activeTargetEnemy?.speed || 5}) · โอกาสตีซ้ำ {playerFollowUpChance}% เมื่อโจมตีปกติ</span>
           ) : (
-            <span>⚠️ <strong>ศัตรูว่องไวกว่า!</strong> (SPD ของคุณ {playerSpeed} vs ศัตรู {activeTargetEnemy?.speed || 5}) ศัตรูจะชิงโจมตีก่อน</span>
+            <span>⚠️ <strong>ศัตรูว่องไวกว่า!</strong> (SPD {playerSpeed} vs ศัตรู {activeTargetEnemy?.speed || 5}) ศัตรูเริ่มก่อน · โอกาสตีซ้ำ {enemyFollowUpChance}% ต่อการโจมตี</span>
           )}
         </div>
         <div style={{ fontSize: '14px', color: '#d4cae3' }}>
@@ -1991,7 +2164,35 @@ function CombatPanel({
       </div>
 
       {/* Multi-Monster Combat Stage with Giant Hero & Monster Sprites */}
-      <div className="combat-stage-multi">
+      <div className="combat-stage-teams">
+        <div className={`battle-team battle-team-player ${battleMotion === 'player' ? 'battle-lunge-player' : ''}`}>
+        <article className={`hero-battle-card ${battleMotion === 'enemy' && (motionTarget === 'hero' || motionTarget === 'both') ? 'battle-hit-target' : ''}`}>
+          <span className="battle-unit-name">{({ knight: 'อัศวิน', mage: 'นักเวท', rogue: 'โจร', ranger: 'เรนเจอร์' } as Record<string, string>)[state.kit || 'knight'] || 'นักผจญภัย'}</span>
+          <div className="battle-unit-sprite hero-battle-sprite">
+            <img src={getHeroSpritePath(state.kit)} alt={`ตัวละครคลาส ${state.kit || 'knight'}`} onError={(e) => { e.currentTarget.src = '/art/pixel/hero.png' }} />
+          </div>
+          <div className="battle-unit-vitals">❤️ {state.stats.hp}/{state.stats.max_hp} · 🔷 {state.stats.mp || 0}/{state.stats.max_mp || 0}</div>
+          <div className="battle-unit-vitals">⚡ SPD {playerSpeed}</div>
+          {(combat.player_buffs || []).map((buff) => (
+            <span className={`battle-buff-tag buff-${buff.stat}`} key={`${buff.stat}-${buff.name}`}>
+              ✨ {buff.stat.toUpperCase()} +{buff.value} · ชั่วคราว {buff.turns_remaining} รอบ
+            </span>
+          ))}
+          {combat.player_status && <span className="battle-status-tag">{combat.player_status}</span>}
+        </article>
+
+        {combat.summon && (
+          <article className={`summon-battle-card summon-${combat.summon.element} ${combat.summon.element === 'earth' ? 'summon-frontline' : 'summon-backline'} ${battleMotion === 'enemy' && (motionTarget === 'summon' || motionTarget === 'both') ? 'battle-hit-target' : ''}`}>
+            <span className="battle-unit-name">{combat.summon.name} · {combat.summon.turns_remaining} รอบ</span>
+            <div className="battle-unit-sprite summon-battle-sprite">
+              <img src={getSummonSpritePath(combat.summon.element)} alt={combat.summon.name} onError={(e) => { e.currentTarget.src = '/art/pixel/hero.png' }} />
+            </div>
+            {combat.summon.element === 'earth' && <div className="battle-unit-vitals">🪨 แนวหน้า · รับทุกการโจมตีเดี่ยว · AoE โดนทั้งคู่ · HP {combat.summon.hp}/{combat.summon.max_hp}</div>}
+            {combat.summon.element !== 'earth' && <div className="battle-unit-vitals">✨ สปิริตช่วยเหลือ</div>}
+          </article>
+        )}
+        </div>
+
         {vfxList.map((vfx) => (
           <div className="floating-text-container" key={vfx.id}>
             {vfx.text && <div className={`floating-number ${vfx.colorClass || 'dmg-red'}`}>{vfx.text}</div>}
@@ -2003,9 +2204,11 @@ function CombatPanel({
           </div>
         ))}
 
+        <div className={`battle-team battle-team-enemies ${battleMotion === 'enemy' ? 'battle-lunge-enemies' : ''}`}>
         {enemies.map((enemy) => {
           const isSelected = activeTargetEnemy.index === enemy.index
           const isHeavy = enemy.intent === 'HEAVY'
+          const isAoE = enemy.intent === 'AOE'
           const isTargetedByHover = Boolean(hoveredAction && enemy.alive && (
             hoveredAction.isAoE || enemy.index === activeTargetEnemy.index
           ))
@@ -2017,7 +2220,7 @@ function CombatPanel({
           return (
             <div
               key={enemy.index}
-              className={`monster-card enemy-battle-card ${enemy.tier === 'boss' ? 'is-boss-card' : ''} ${isSelected ? 'is-selected' : ''} ${!enemy.alive ? 'is-dead' : ''} ${isTargetedByHover ? 'is-hover-targeted' : ''}`}
+              className={`monster-card enemy-battle-card ${enemy.tier === 'boss' ? 'is-boss-card' : ''} ${isSelected ? 'is-selected' : ''} ${!enemy.alive ? 'is-dead' : ''} ${isTargetedByHover ? 'is-hover-targeted' : ''} ${battleMotion === 'player' && motionEnemyIndex === enemy.index ? 'battle-hit-target' : ''}`}
               onClick={() => {
                 if (enemy.alive) {
                   setSelectedTarget(enemy.index)
@@ -2037,8 +2240,8 @@ function CombatPanel({
               </div>
 
               {enemy.alive ? (
-                <div className={`monster-intent-pill ${isHeavy ? 'intent-heavy' : ''}`}>
-                  {isHeavy ? `⚠️ เตรียมทุบหนัก! (${enemy.intent_value} ATK)` : `🗡️ เตรียมโจมตี (${enemy.intent_value} ATK)`}
+                <div className={`monster-intent-pill ${isHeavy || isAoE ? 'intent-heavy' : ''}`}>
+                  {isAoE ? `💥 เตรียมโจมตีวงกว้าง ทะลุแนวโกเลม! (${enemy.intent_value} ATK)` : isHeavy ? `⚠️ เตรียมทุบหนัก! (${enemy.intent_value} ATK)` : `🗡️ เตรียมโจมตี (${enemy.intent_value} ATK)`}
                 </div>
               ) : (
                 <div className="monster-intent-pill" style={{ color: '#888' }}>
@@ -2078,6 +2281,7 @@ function CombatPanel({
             </div>
           )
         })}
+        </div>
 
         {/* Combat Finished Overlay Modal (Victory / Defeat Dialog with Sparkle Loot Showcase) */}
         {combat.finished && (
@@ -2129,6 +2333,7 @@ function CombatPanel({
         <div className="combat-actions">
           <button
             className="button button-primary"
+            disabled={isAnimating}
             onClick={handleAttack}
             onMouseEnter={() => setHoveredAction({ type: 'ATTACK', isAoE: false })}
             onMouseLeave={() => setHoveredAction(null)}
@@ -2140,25 +2345,37 @@ function CombatPanel({
           {state.stats.weapon_skill && (
             <button
               className="button skill-button"
-              disabled={(state.stats.mp || 0) < (state.stats.weapon_skill_cost || 0) || (combat.skill_cooldown || 0) > 0}
+              disabled={isAnimating || (state.stats.mp || 0) < combatSkillCost || (combat.skill_cooldown || 0) > 0}
               onClick={handleSkill}
-              onMouseEnter={() => setHoveredAction({ type: 'SKILL', isAoE: state.stats.weapon_skill_target === 'aoe' })}
+              onMouseEnter={() => setHoveredAction({ type: 'SKILL', isAoE: state.stats.weapon_skill_target === 'aoe' || state.stats.weapon_skill_target === 'adjacent' })}
               onMouseLeave={() => setHoveredAction(null)}
               title={state.stats.weapon_skill_desc}
             >
-              <span>✨ {state.stats.weapon_skill} {state.stats.weapon_skill_target === 'aoe' ? '(หมู่)' : ''}</span>
+              <span>✨ {state.stats.weapon_skill} {state.stats.weapon_skill_target === 'aoe' ? '(หมู่)' : state.stats.weapon_skill_target === 'adjacent' ? '(เป้าหมายและศัตรูข้างเคียง)' : ''}</span>
               {(combat.skill_cooldown || 0) > 0 ? (
                 <span className="skill-cost-badge cooldown-badge">⏳ คูลดาวน์ {combat.skill_cooldown} เทิร์น</span>
               ) : (
-                <span className="skill-cost-badge">{state.stats.weapon_skill_cost} MP</span>
+                <span className="skill-cost-badge">{combatSkillCost} MP</span>
               )}
               <span className="action-predicted-badge">~{calculatePredictedDamage('SKILL', activeTargetEnemy)} DMG</span>
             </button>
           )}
 
-          <button className="button button-outline" onClick={handleDefend}>
-            🛡️ ตั้งรับ {state.stats.archetype === 'sword' ? '(ลดดาเมจ 70% + สะท้อน)' : state.stats.archetype === 'daggers' ? '(โอกาสหลบ 50%)' : state.stats.archetype === 'staff' ? '(ลดดาเมจ 60% + ฟื้น 8 MP)' : '(ลดดาเมจ 50%)'}
+          <button className="button button-outline" disabled={isAnimating} onClick={handleDefend}>
+            🛡️ ตั้งรับ {state.stats.archetype === 'sword' ? state.equipment.offhand ? '(ลดดาเมจ 70% + สะท้อน · ฟื้น 3 MP)' : '(ลดดาเมจ 50% · ฟื้น 3 MP)' : state.stats.archetype === 'daggers' ? '(โอกาสหลบ 50% · ฟื้น 3 MP)' : state.stats.archetype === 'staff' ? '(ลดดาเมจ 60% + ฟื้น 5 MP)' : '(ลดดาเมจ 50% · ฟื้น 3 MP)'}
           </button>
+
+          {activeGear && (
+            <button
+              className="button button-outline"
+              disabled={isAnimating || (state.stats.mp || 0) < (activeGear.ability_cost || 0) || (combat.equipment_cooldowns?.[activeGear.id] || 0) > 0}
+              onClick={() => handleGearAbility(activeGear)}
+              title={activeGear.ability_desc}
+            >
+              💨 {activeGear.ability_name} · SPD +{activeGear.ability_effect?.value} ชั่วคราว {activeGear.ability_effect?.duration} รอบ · {activeGear.ability_cost} MP
+              {(combat.equipment_cooldowns?.[activeGear.id] || 0) > 0 ? ` · คูลดาวน์ ${combat.equipment_cooldowns?.[activeGear.id]} รอบ` : ''}
+            </button>
+          )}
 
           {potions.map((item) => {
             const entry = catalog.find((cat) => cat.id === item.item_id)
@@ -2167,6 +2384,7 @@ function CombatPanel({
               <button
                 className={`button ${isBomb ? 'button-gold' : 'button-outline'} button-with-icon`}
                 key={item.item_id}
+                disabled={isAnimating}
                 onClick={() => handleUseItem(item.item_id)}
                 onMouseEnter={() => {
                   if (entry?.effect?.type === 'damage_aoe') {
@@ -2189,13 +2407,15 @@ function CombatPanel({
                   ? `💣 ปา ${entry.name} (ระเบิดหมู่ 30 ดาเมจ!) ×${item.quantity}`
                   : entry?.effect?.type === 'smoke'
                   ? `💨 ปา ${entry.name} (หนีทันที 100%) ×${item.quantity}`
+                  : entry?.effect?.type === 'speed_buff'
+                  ? `⚡ ใช้ ${entry.name} (SPD +${entry.effect.value} ชั่วคราว 2 รอบ) ×${item.quantity}`
                   : `ใช้ ${entry?.name || item.item_id} (×${item.quantity})`}
               </button>
             )
           })}
 
           {combat.tier !== 'boss' && (
-            <button className="button button-quiet" onClick={() => onCommand('combat.action', { action: 'ESCAPE' })}>
+            <button className="button button-quiet" disabled={isAnimating} onClick={() => dispatchCombatAction('ESCAPE', {})}>
               🏃 หนี (โอกาส 50%)
             </button>
           )}
@@ -2225,7 +2445,8 @@ function InventoryPanel({
   const itemByID = (id: string) => catalog.find((item) => item.id === id)
   const equipped: { slot: string; label: string; itemID: string; index?: number }[] = [
     { slot: 'weapon', label: '⚔️ อาวุธหลัก', itemID: state.equipment.weapon },
-    { slot: 'armor', label: '🛡️ เกราะลำตัว', itemID: state.equipment.armor },
+    { slot: 'offhand', label: '🛡️ มือรอง / โล่', itemID: state.equipment.offhand || '' },
+    { slot: 'armor', label: '🛡️ เกราะ / เสื้อคลุม', itemID: state.equipment.armor },
     { slot: 'helmet', label: '🪖 หมวกเกราะ', itemID: state.equipment.helmet },
     ...state.equipment.accessories.map((itemID, index) => ({ slot: 'accessory', index, label: `💍 เครื่องประดับ ${index + 1}`, itemID })),
   ]
@@ -2264,7 +2485,7 @@ function InventoryPanel({
       <div className="active-skill-banner">
         <div>
           <span className="eyebrow">ACTIVE WEAPON SKILL</span>
-          <strong>✨ {state.stats.weapon_skill} ({state.stats.weapon_skill_cost} MP) — {state.stats.weapon_skill_target === 'aoe' ? 'โจมตีหมู่ทุกตัว' : 'โจมตีเป้าหมายเดี่ยว'}</strong>
+          <strong>✨ {state.stats.weapon_skill} ({state.stats.weapon_skill_cost} MP) — {state.stats.weapon_skill_target === 'aoe' ? 'โจมตีศัตรูทุกตัว' : state.stats.weapon_skill_target === 'adjacent' ? 'โจมตีเป้าหมายและศัตรูข้างเคียง' : 'โจมตีเป้าหมายเดี่ยว'}</strong>
           <p>{state.stats.weapon_skill_desc}</p>
         </div>
       </div>
@@ -2301,7 +2522,7 @@ function InventoryPanel({
                       {item.stats.max_mp ? `MP +${item.stats.max_mp} ` : ''}
                       {item.stats.speed ? `SPD ${item.stats.speed > 0 ? `+${item.stats.speed}` : item.stats.speed}` : ''}
                     </small>
-                    {item.skill_name && <small style={{ color: '#c49bff' }}>✨ สกิล: {item.skill_name}</small>}
+                  {item.ability_name && <small style={{ color: '#c49bff' }}>✨ {item.ability_type === 'active' ? 'Active' : 'Passive'}: {item.ability_name}{item.ability_cost ? ` (${item.ability_cost} MP)` : ''}</small>}
                   </div>
                 </div>
               ) : <strong className="empty-slot-label">— ยังไม่ได้สวมใส่ —</strong>}
@@ -2338,6 +2559,9 @@ function InventoryPanel({
         <div className="backpack-grid">
           {state.inventory.map((stack) => {
             const item = itemByID(stack.item_id)
+            const playerClass = state.kit === 'default' || state.kit === 'warrior' ? 'knight' : state.kit
+            const classLocked = item?.type === 'weapon' && item.class && item.class !== playerClass
+            const blockedByTwoHand = item?.type === 'offhand' && catalog.find((candidate) => candidate.id === state.equipment.weapon)?.two_handed
             const canHealHP = item?.type === 'consumable' && item.effect?.type === 'heal' && state.stats.hp < state.stats.max_hp
             const canHealMP = item?.type === 'consumable' && item.effect?.type === 'heal_mp' && (state.stats.mp || 0) < (state.stats.max_mp || 20)
             const canUse = !inCombat && (canHealHP || canHealMP)
@@ -2356,7 +2580,9 @@ function InventoryPanel({
                     {item?.name || stack.item_id}{stack.quantity > 1 && <small> ×{stack.quantity}</small>} 🔍
                   </strong>
                   <span>{item?.description || 'ไอเทมสำหรับผจญภัย'}</span>
-                  {item?.skill_name && <span style={{ color: '#c49bff', fontWeight: 600 }}>✨ มอบสกิล: {item.skill_name} ({item.skill_cost} MP)</span>}
+                  {item?.ability_name && <span style={{ color: '#c49bff', fontWeight: 600 }}>✨ {item.ability_type === 'active' ? 'Active' : 'Passive'}: {item.ability_name}{(item.ability_cost || item.skill_cost) ? ` (${item.ability_cost || item.skill_cost} MP)` : ''}</span>}
+                  {classLocked && <span style={{ color: '#ff8d8d' }}>อาวุธนี้ใช้ได้เฉพาะคลาส {item.class}</span>}
+                  {blockedByTwoHand && <span style={{ color: '#ffcf72' }}>ต้องถอดอาวุธสองมือก่อนสวมโล่</span>}
                   {ITEM_LORE[stack.item_id] && <span className="item-lore-quote">{ITEM_LORE[stack.item_id]}</span>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -2371,7 +2597,7 @@ function InventoryPanel({
                   {item && item.type !== 'consumable' && (
                     <button
                       className="button button-primary compact"
-                      disabled={inCombat}
+                      disabled={inCombat || Boolean(classLocked) || Boolean(blockedByTwoHand)}
                       onClick={() => onCommand('inventory.equip', { item_id: item.id, slot: item.slot })}
                     >
                       สวมใส่
@@ -2488,16 +2714,16 @@ function DungeonMap({
 
     <div className="map-route-guide-strip">
       <div className="route-lane-pill rush-lane">
-        <strong>⚡ สายบน (ทางลัดบุกเร็ว 3 จุดถึงบอส):</strong>
-        <span>ผ่านห้องน้อยกว่า แต่ต้องดวลกับมอนสเตอร์ระดับ <b>ELITE</b> (ดรอปไอเทม 100%)</span>
+        <strong>⚡ ทางลัด:</strong>
+        <span>ข้ามบางจุดได้ แต่เส้นทางนี้พาไปดวลกับ <b>ELITE</b> ซึ่งดรอปไอเทมแน่นอน</span>
       </div>
       <div className="route-lane-pill balanced-lane">
-        <strong>⚖️ สายกลาง (สมดุล 5 จุดถึงบอส):</strong>
-        <span>เก็บเลเวล ปริศนาอักษรรูน และเหตุการณ์พิเศษ</span>
+        <strong>🧭 เลือกเส้นทางตามโหนดที่สุ่มได้:</strong>
+        <span>แต่ละชั้นมีจำนวนจุดและชนิดห้องเปลี่ยนไป · ทุกเส้นทางมีมอนสเตอร์หรืออีลิทอย่างน้อยหนึ่งครั้ง</span>
       </div>
       <div className="route-lane-pill farm-lane">
-        <strong>🌾 สายล่าง (ฟาร์มยาว 5 จุด · ตลาด & ช่างตีเหล็ก):</strong>
-        <span>แวะ <b>🛒 ตลาดร้านค้า</b>, <b>⚒️ โรงตีเหล็ก</b>, <b>🎁 สมบัติ</b> และ <b>⛺ แคมป์ไฟ</b></span>
+        <strong>🎒 วางแผนความเสี่ยงและทรัพยากร:</strong>
+        <span>อ่านชนิดห้องที่อยู่ข้างหน้าเพื่อเลือกระหว่างสู้ เก็บของ พัก หรือแวะร้าน</span>
       </div>
     </div>
 

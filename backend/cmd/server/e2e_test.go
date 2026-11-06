@@ -299,6 +299,9 @@ func playE2EDungeon(client *e2eClient) error {
 					for _, stock := range private.Activity.Stock {
 						if stock.Available && stock.Price <= private.Gold {
 							if err := client.command("room.action", map[string]any{"action": "buy", "item_id": stock.ItemID}); err != nil {
+								if strings.Contains(err.Error(), "INVENTORY_FULL") {
+									break
+								}
 								return err
 							}
 							bought = true

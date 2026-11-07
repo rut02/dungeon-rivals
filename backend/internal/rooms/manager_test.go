@@ -250,6 +250,55 @@ func TestCombatRewardsAndRespawnRules(t *testing.T) {
 	}
 }
 
+func TestSingleTargetAttackDoesNotDamageOtherEnemies(t *testing.T) {
+	m := managerWithCombat(t)
+	host, _ := m.Create("Host")
+	guest, _ := m.Join(host.RoomCode, "Guest")
+	r := m.rooms[host.RoomCode]
+	_ = m.setReady(r, host.PlayerID, true)
+	_ = m.setReady(r, guest.PlayerID, true)
+	if err := m.start(r, host.PlayerID); err != nil {
+		t.Fatal(err)
+	}
+	p := findPlayer(r, host.PlayerID)
+	floor := &p.Dungeon.Floors[0]
+	targetID := floor.Nodes[0].Connections[0]
+	for i := range floor.Nodes {
+		if floor.Nodes[i].ID == targetID {
+			floor.Nodes[i].Type = dungeon.MonsterRoom
+		}
+	}
+	if err := m.moveDungeon(r, host.PlayerID, targetID); err != nil {
+		t.Fatal(err)
+	}
+	p.Combat = &combat.State{
+		Enemies: []combat.Enemy{
+			{Index: 0, Name: "Enemy A", HP: 50, MaxHP: 50, Attack: 2, Defense: 0, Speed: 1, Alive: true},
+			{Index: 1, Name: "Enemy B", HP: 50, MaxHP: 50, Attack: 2, Defense: 0, Speed: 1, Alive: true},
+		},
+		SelectedEnemy: 0,
+		Turn:          1,
+	}
+	p.Combat.SyncLegacyFields()
+
+	if err := m.combatAction(r, host.PlayerID, "ATTACK", "", 0); err != nil {
+		t.Fatal(err)
+	}
+	if p.Combat.Enemies[0].HP >= 50 {
+		t.Fatalf("Enemy 0 should have taken damage, got HP: %d", p.Combat.Enemies[0].HP)
+	}
+	if p.Combat.Enemies[1].HP != 50 {
+		t.Fatalf("Enemy 1 was not targeted but lost HP! Got: %d, want: 50", p.Combat.Enemies[1].HP)
+	}
+
+	if err := m.combatAction(r, host.PlayerID, "ATTACK", "", 0); err != nil {
+		t.Fatal(err)
+	}
+	if p.Combat.Enemies[1].HP != 50 {
+		t.Fatalf("Enemy 1 lost HP on Turn 2 without being attacked! Got: %d, want: 50", p.Combat.Enemies[1].HP)
+	}
+}
+
 func TestPvEDeathRespawnsWithoutRewardAndReopensNode(t *testing.T) {
 	m := managerWithCombat(t)
 	host, _ := m.Create("Host")

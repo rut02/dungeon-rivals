@@ -556,6 +556,10 @@ function AppContent() {
       if ((e.key === 'b' || e.key === 'B' || e.key === 'i' || e.key === 'I') && canOpenBag) {
         setShowBag((prev) => !prev)
       } else if (e.key === 'Escape') {
+        if (inspectedItemId) {
+          setInspectedItemId(null)
+          return
+        }
         setShowBag(false)
         setShowLore(false)
       }
@@ -947,14 +951,6 @@ function AppContent() {
         />
       )}
 
-      {/* ITEM INSPECTOR MODAL */}
-      {inspectedItem && (
-        <ItemInspectorModal
-          item={inspectedItem}
-          onClose={() => setInspectedItemId(null)}
-        />
-      )}
-
       {/* BAG / INVENTORY MODAL DRAWER */}
       {showBag && canOpenBag && privateState && (
         <div className="bag-modal-overlay" onClick={() => setShowBag(false)}>
@@ -970,6 +966,14 @@ function AppContent() {
             />
           </div>
         </div>
+      )}
+
+      {/* ITEM INSPECTOR MODAL */}
+      {inspectedItem && (
+        <ItemInspectorModal
+          item={inspectedItem}
+          onClose={() => setInspectedItemId(null)}
+        />
       )}
 
       {error && (
@@ -1072,6 +1076,16 @@ function ItemInspectorModal({
   onClose: () => void
 }) {
   const rarity = item.rarity || 'common'
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
   const slotLabels: Record<string, string> = {
     weapon: '⚔️ อาวุธหลัก (Main Hand)',
     offhand: '🛡️ มือรอง / โล่ (Offhand)',
@@ -1214,7 +1228,16 @@ function HeroHudBar({
         <div className="hud-hero-identity">
           <div className="hud-avatar-frame">
             <div className="hud-avatar-inner">
-              <img src="/art/pixel/hero.png" alt="Hero" className="hud-avatar-img" width={52} height={52} />
+              <img
+                src={getHeroSpritePath(state.kit)}
+                alt="Hero"
+                className="hud-avatar-img"
+                width={52}
+                height={52}
+                onError={(e) => {
+                  e.currentTarget.src = '/art/pixel/hero.png'
+                }}
+              />
             </div>
             <span className="hud-level-badge">Lv.{state.stats.level || 1}</span>
           </div>
@@ -1890,7 +1913,7 @@ function CombatPanel({
   const [battleMotion, setBattleMotion] = useState<'player' | 'enemy' | null>(null)
   const [motionTarget, setMotionTarget] = useState<'hero' | 'summon' | 'both' | null>(null)
   const [motionEnemyIndex, setMotionEnemyIndex] = useState<number | null>(null)
-  const [hoveredAction, setHoveredAction] = useState<{ type: 'ATTACK' | 'SKILL' | 'FIRE_BOMB'; isAoE: boolean } | null>(null)
+  const [hoveredAction, setHoveredAction] = useState<{ type: 'ATTACK' | 'SKILL' | 'FIRE_BOMB'; isAoE?: boolean; isAdjacent?: boolean } | null>(null)
   const combatLogRef = useRef<HTMLDivElement>(null)
   const animationLockRef = useRef(false)
   const logCursorRef = useRef(combat.log.length)
@@ -2017,9 +2040,12 @@ function CombatPanel({
       return Math.max(1, stats.atk - enemy.defense)
     }
     if (actionType === 'SKILL') {
-      if (stats.weapon_skill_target === 'aoe' || stats.weapon_skill_target === 'adjacent') {
+      if (stats.weapon_skill_target === 'aoe') {
         const def = stats.archetype === 'staff' ? Math.floor(enemy.defense * 0.4) : Math.floor(enemy.defense * 0.7)
         return Math.max(1, Math.floor(combatSkillATK * 1.20) - def)
+      }
+      if (stats.weapon_skill_target === 'adjacent') {
+        return Math.max(1, Math.floor(combatSkillATK * 1.25) - enemy.defense)
       }
       if (stats.archetype === 'sword') {
         return Math.max(1, Math.floor(combatSkillATK * 1.35) + stats.def - enemy.defense)
@@ -2210,7 +2236,9 @@ function CombatPanel({
           const isHeavy = enemy.intent === 'HEAVY'
           const isAoE = enemy.intent === 'AOE'
           const isTargetedByHover = Boolean(hoveredAction && enemy.alive && (
-            hoveredAction.isAoE || enemy.index === activeTargetEnemy.index
+            hoveredAction.isAoE ||
+            (hoveredAction.isAdjacent && Math.abs(enemy.index - activeTargetEnemy.index) <= 1) ||
+            enemy.index === activeTargetEnemy.index
           ))
           const predictedDmg = isTargetedByHover && hoveredAction ? calculatePredictedDamage(hoveredAction.type, enemy) : 0
           const remainingHpAfterDmg = Math.max(0, enemy.hp - predictedDmg)
@@ -2347,7 +2375,11 @@ function CombatPanel({
               className="button skill-button"
               disabled={isAnimating || (state.stats.mp || 0) < combatSkillCost || (combat.skill_cooldown || 0) > 0}
               onClick={handleSkill}
-              onMouseEnter={() => setHoveredAction({ type: 'SKILL', isAoE: state.stats.weapon_skill_target === 'aoe' || state.stats.weapon_skill_target === 'adjacent' })}
+              onMouseEnter={() => setHoveredAction({
+                type: 'SKILL',
+                isAoE: state.stats.weapon_skill_target === 'aoe',
+                isAdjacent: state.stats.weapon_skill_target === 'adjacent',
+              })}
               onMouseLeave={() => setHoveredAction(null)}
               title={state.stats.weapon_skill_desc}
             >
@@ -2677,9 +2709,9 @@ function DungeonMap({
   const maxDepth = depths[depths.length - 1] || 6
 
   // Compute deterministic (x, y) coordinates on a wide canvas for Circular Nodes + Shortcut Arcs
-  const COL_WIDTH = 270
-  const CANVAS_HEIGHT = 650
-  const CANVAS_WIDTH = Math.max(1540, depths.length * COL_WIDTH)
+  const COL_WIDTH = 290
+  const CANVAS_HEIGHT = 740
+  const CANVAS_WIDTH = Math.max(1620, depths.length * COL_WIDTH)
 
   const nodeCoords = useMemo(() => {
     const coords: Record<string, { x: number; y: number; node: DungeonNode }> = {}
@@ -2688,8 +2720,8 @@ function DungeonMap({
       const count = nodesInDepth.length
       const x = colIdx * COL_WIDTH + COL_WIDTH / 2
       nodesInDepth.forEach((node, rowIdx) => {
-        const usableHeight = CANVAS_HEIGHT - 170
-        const y = 95 + ((rowIdx + 1) / (count + 1)) * usableHeight
+        const usableHeight = CANVAS_HEIGHT - 180
+        const y = 100 + ((rowIdx + 1) / (count + 1)) * usableHeight
         coords[node.id] = { x, y, node }
       })
     })
@@ -2764,6 +2796,18 @@ function DungeonMap({
               <stop offset="0%" stopColor="#2ed573" />
               <stop offset="100%" stopColor="#7bed9f" />
             </linearGradient>
+            <marker id="arrow-available" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 9 5 L 0 9 z" fill="#ffd166" />
+            </marker>
+            <marker id="arrow-highlight" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 1 L 9 5 L 0 9 z" fill="#ffe08a" />
+            </marker>
+            <marker id="arrow-cleared" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 1 L 9 5 L 0 9 z" fill="#2ed573" />
+            </marker>
+            <marker id="arrow-shortcut" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 9 5 L 0 9 z" fill="#ffa502" />
+            </marker>
           </defs>
           {floor.nodes.flatMap((fromNode) => {
             const fromPos = nodeCoords[fromNode.id]
@@ -2779,31 +2823,45 @@ function DungeonMap({
               const isClearedEdge =
                 (fromNode.status === 'CLEARED' || fromNode.status === 'SKIPPED') &&
                 (toNode.status === 'CLEARED' || toNode.status === 'SKIPPED' || toNode.status === 'IN_PROGRESS')
-              const isHoveredEdge = hoveredNodeId === fromNode.id || hoveredNodeId === toNode.id
               const isOutgoingFromHovered = hoveredNodeId === fromNode.id
+              const isIncomingToHovered = hoveredNodeId === toNode.id
+              const isHoveredEdge = isOutgoingFromHovered || isIncomingToHovered
               const isPastUnchosen = fromNode.depth <= state.progress && !isNextAvailable && !isClearedEdge
 
               const x1 = fromPos.x + 39
               const y1 = fromPos.y
-              const x2 = toPos.x - 39
+              const x2 = toPos.x - 42
               const y2 = toPos.y
               const dx = x2 - x1
               const cx1 = x1 + dx * 0.45
               const cx2 = x1 + dx * 0.55
-              const arcLift = isShortcut ? -80 : 0
+              const arcLift = isShortcut ? -120 : 0
               const d = `M ${x1} ${y1} C ${cx1} ${y1 + arcLift}, ${cx2} ${y2 + arcLift}, ${x2} ${y2}`
 
               let edgeClass = isShortcut ? 'map-edge-shortcut' : 'map-edge-future'
               if (isNextAvailable) edgeClass = 'map-edge-available'
               else if (isClearedEdge) edgeClass = 'map-edge-cleared'
               else if (isPastUnchosen) edgeClass = 'map-edge-locked'
-              if (isHoveredEdge) edgeClass += ' is-hovered'
+              if (isIncomingToHovered) edgeClass += ' is-incoming-highlight'
               if (isOutgoingFromHovered) edgeClass += ' is-outgoing-highlight'
+              if (hoveredNodeId && !isHoveredEdge && !isNextAvailable) edgeClass += ' is-dimmed'
+
+              const markerEnd = isOutgoingFromHovered
+                ? 'url(#arrow-highlight)'
+                : isIncomingToHovered
+                ? 'url(#arrow-highlight)'
+                : isNextAvailable
+                ? 'url(#arrow-available)'
+                : isShortcut
+                ? 'url(#arrow-shortcut)'
+                : isClearedEdge
+                ? 'url(#arrow-cleared)'
+                : undefined
 
               return (
                 <g key={`${fromNode.id}->${targetId}`}>
                   {isNextAvailable && <path d={d} className="map-edge-glow" />}
-                  <path d={d} className={`map-edge ${edgeClass}`} />
+                  <path d={d} className={`map-edge ${edgeClass}`} markerEnd={markerEnd} />
                   <circle cx={x2 - 3} cy={y2} r={isNextAvailable ? 5.5 : 3.5} className={`map-edge-dot ${edgeClass}`} />
                 </g>
               )

@@ -135,16 +135,16 @@
 }
 
 .map-edge-future {
-  stroke: #6e5f8c;
-  stroke-width: 2.2px;
+  stroke: #5e5178;
+  stroke-width: 1.8px;
   stroke-dasharray: 4 4;
-  opacity: 0.85;
+  opacity: 0.45;
 }
 
 .map-edge-locked {
   stroke: #342e42;
   stroke-width: 1.6px;
-  opacity: 0.35;
+  opacity: 0.25;
 }
 
 .map-edge.is-hovered {
@@ -161,6 +161,20 @@
   stroke-dasharray: none !important;
   filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.95)) !important;
   z-index: 10;
+}
+
+.map-edge.is-incoming-highlight {
+  stroke: #ffe08a !important;
+  stroke-width: 4.2px !important;
+  opacity: 1 !important;
+  stroke-dasharray: 6 3 !important;
+  animation: route-dash 0.8s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 224, 138, 0.85)) !important;
+  z-index: 10;
+}
+
+.map-edge.is-dimmed {
+  opacity: 0.12 !important;
 }
 
 .map-edge-dot.map-edge-available {

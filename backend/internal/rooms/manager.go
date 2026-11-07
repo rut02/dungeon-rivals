@@ -979,18 +979,12 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			}
 		}
 	}
-	if enc.HP > 0 {
-		for i := range enc.Enemies {
-			if enc.Enemies[i].HP > enc.HP {
-				enc.Enemies[i].HP = enc.HP
-			}
+	if len(enc.Enemies) == 1 && target != nil {
+		if enc.HP > 0 && target.HP > enc.HP {
+			target.HP = enc.HP
 		}
-	}
-	if enc.Attack > 0 {
-		for i := range enc.Enemies {
-			if enc.Enemies[i].Attack < enc.Attack {
-				enc.Enemies[i].Attack = enc.Attack
-			}
+		if enc.Attack > 0 && enc.Attack > target.Attack {
+			target.Attack = enc.Attack
 		}
 	}
 
@@ -1496,7 +1490,7 @@ func (m *Manager) enemiesAttack(p *player, enc *combat.State, stats playerstate.
 			areaAttack := strike == 0 && e.Intent == "AOE"
 			heavyAttack := strike == 0 && e.Intent == "HEAVY"
 			rawDmg := e.Attack
-			if enc.Attack > rawDmg {
+			if len(enc.Enemies) == 1 && enc.Attack > rawDmg {
 				rawDmg = enc.Attack
 			}
 			if heavyAttack {

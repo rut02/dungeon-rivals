@@ -995,6 +995,10 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 	monsterDef := m.monsterByID(enc.MonsterID)
 	stats := p.State.Stats(m.catalog)
 	stats = combatStatsWithBuffs(stats, enc)
+	kit := p.State.Kit
+	if kit == "" || kit == "default" || kit == "warrior" {
+		kit = "knight"
+	}
 	playerFollowUpBonus := m.equipmentAbilityValue(p, "followup")
 	if stats.Archetype == "bow" {
 		playerFollowUpBonus += m.equipmentAbilityValue(p, "ranger_followup")
@@ -1006,6 +1010,10 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		target.HP = max(0, target.HP-firstDmg)
 		enc.FirstStrike = true
 		enc.Log = append(enc.Log, fmt.Sprintf("🏹 First Strike! You hit %s for %d damage before battle starts!", target.Name, firstDmg))
+		if kit == "ranger" && !target.Marked {
+			target.Marked = true
+			enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Ranger Affinity] เล็งจุดตาย! ทำเครื่องหมายใส่ %s (เป้าหมายรับดาเมจเดี่ยว +20%%)", target.Name))
+		}
 		if target.HP == 0 {
 			target.Alive = false
 			enc.Log = append(enc.Log, target.Name+" was slain by your opening volley!")
@@ -1026,6 +1034,9 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			critChance := 30
 			if stats.Archetype == "daggers" {
 				critChance += m.equipmentAbilityValue(p, "rogue_crit")
+				if kit == "rogue" {
+					critChance += 15 // Rogue affinity passive bonus
+				}
 			}
 			if stats.Archetype == "daggers" && rng.Intn(100) < min(50, critChance) {
 				dmg = int(float64(dmg) * 1.8)
@@ -1033,26 +1044,45 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			} else if stats.Archetype == "staff" {
 				dmg = combat.Damage(stats.ATK, int(float64(target.Defense)*0.5))
 			}
+			if target.Marked {
+				dmg = int(float64(dmg) * 1.20)
+				enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Marked Target] รอยมาร์กจุดตายเพิ่มความเสียหาย +20%%! (%d ดาเมจ)", dmg))
+			}
 			hpBefore := target.HP
 			target.HP = max(0, target.HP-dmg)
 			m.healFromDamage(p, hpBefore, dmg, enc)
 			enc.Log = append(enc.Log, fmt.Sprintf("You dealt %d damage to %s.", dmg, target.Name))
+			if kit == "rogue" && stats.Archetype == "daggers" && target.HP > 0 {
+				if rng.Intn(100) < 35 {
+					target.Status = "bleed"
+					target.StatusTurns = 2
+					enc.Log = append(enc.Log, fmt.Sprintf("🩸 [Rogue Affinity] คมมีดกรีดลึก! %s ติดสถานะเลือดไหล (Bleed 2 รอบ)", target.Name))
+				}
+			}
+			if kit == "ranger" && stats.Archetype == "bow" && target.HP > 0 {
+				if !target.Marked {
+					target.Marked = true
+					enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Ranger Affinity] เล็งจุดตาย! ทำเครื่องหมายใส่ %s (เป้าหมายรับดาเมจเดี่ยว +20%%)", target.Name))
+				}
+			}
 			if target.HP == 0 {
 				target.Alive = false
 				enc.Log = append(enc.Log, target.Name+" was defeated!")
 				return
 			}
-			chance := min(32, combat.ExtraStrikeChance(stats.SPD, target.Speed)+playerFollowUpBonus)
-			if chance > 0 && rng.Intn(100) < chance && target.Alive {
-				defense := target.Defense
-				if stats.Archetype == "staff" {
-					defense /= 2
-				}
-				followUp := combat.Damage(int(float64(stats.ATK)*0.60), defense)
+			if combat.ExtraStrikeEligible(stats.SPD, target.Speed) && enc.PlayerStatus != "freeze" && target.Alive {
+				followUp := max(1, int(float64(dmg)*0.40))
 				hpBefore = target.HP
 				target.HP = max(0, target.HP-followUp)
 				m.healFromDamage(p, hpBefore, followUp, enc)
-				enc.Log = append(enc.Log, fmt.Sprintf("⚡ SPD follow-up! โจมตีซ้ำเบา ๆ ใส่ %s อีก %d ดาเมจ (โอกาส %d%%)", target.Name, followUp, chance))
+				enc.Log = append(enc.Log, fmt.Sprintf("⚡ SPD Advantage! (SPD %d vs %d) โจมตีซ้ำปกติเพิ่ม 1 ครั้ง ใส่ %s อีก %d ดาเมจ (40%%)", stats.SPD, target.Speed, target.Name, followUp))
+				if kit == "rogue" && stats.Archetype == "daggers" && target.HP > 0 && target.Status == "" {
+					if rng.Intn(100) < 18 {
+						target.Status = "bleed"
+						target.StatusTurns = 2
+						enc.Log = append(enc.Log, fmt.Sprintf("🩸 [Rogue Affinity] โจมตีซ้ำติดสถานะเลือดไหลใส่ %s!", target.Name))
+					}
+				}
 				if target.HP == 0 {
 					target.Alive = false
 					enc.Log = append(enc.Log, target.Name+" was defeated!")
@@ -1089,10 +1119,20 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			cost = 4
 		}
 		cost = max(1, cost-m.equipmentAbilityValue(p, "skill_cost"))
+		if kit == "mage" && stats.Archetype == "staff" && !enc.MageSkillUsed {
+			enc.MageSkillUsed = true
+			savedMP := max(3, cost/2)
+			cost = max(1, cost-savedMP)
+			enc.Log = append(enc.Log, fmt.Sprintf("✨ [Mage Affinity] สมาธิแรกเริ่ม: ลดค่าร่าย MP สกิลลง %d หน่วย!", savedMP))
+		}
 		if !p.State.ConsumeMP(cost) {
 			return playerstate.ErrNotEnoughMP
 		}
 		enc.SkillCooldown = 3 // 2 turns cooldown after turn ends
+		if kit == "knight" && stats.Archetype == "sword" {
+			enc.ShieldBarrier += 5
+			enc.Log = append(enc.Log, "🛡️ [Knight Affinity] สกิลศัสตราเสริมบาเรียป้องกัน +5 หน่วย!")
+		}
 		skillATK := (stats.ATK*(100+m.equipmentAbilityValue(p, "skill_damage")) + 99) / 100
 		castSkill := func() {
 			enc.Log = append(enc.Log, fmt.Sprintf("⚡ You used %s! (-%d MP)", stats.WeaponSkill, cost))
@@ -1198,10 +1238,18 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 					default:
 						dmg = combat.Damage(int(float64(skillATK)*1.40)+stats.DEF, target.Defense)
 					}
+					if target.Marked {
+						dmg = int(float64(dmg) * 1.20)
+						enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Marked Target] รอยมาร์กจุดตายเพิ่มความเสียหาย +20%%! (%d ดาเมจ)", dmg))
+					}
 					hpBefore := target.HP
 					target.HP = max(0, target.HP-dmg)
 					m.healFromDamage(p, hpBefore, dmg, enc)
 					enc.Log = append(enc.Log, fmt.Sprintf("Dealt %d devastating damage to %s!", dmg, target.Name))
+					if kit == "ranger" && stats.Archetype == "bow" && target.HP > 0 && !target.Marked {
+						target.Marked = true
+						enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Ranger Affinity] เล็งจุดตาย! ทำเครื่องหมายใส่ %s (เป้าหมายรับดาเมจเดี่ยว +20%%)", target.Name))
+					}
 					if target.HP == 0 {
 						target.Alive = false
 						enc.Log = append(enc.Log, target.Name+" was defeated!")
@@ -1238,11 +1286,11 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			enc.Log = append(enc.Log, fmt.Sprintf("🛡️ อุปกรณ์ตั้งรับสร้างบาเรียรับความเสียหาย %d หน่วย", enc.ShieldBarrier))
 		}
 		if stats.Archetype == "staff" {
-			p.State.RestoreMP(5, m.catalog)
-			enc.Log = append(enc.Log, "Mana Barrier restored 5 MP!")
-		} else {
 			p.State.RestoreMP(3, m.catalog)
-			enc.Log = append(enc.Log, "🧘 ตั้งรับและรวบรวมพลัง: ฟื้น 3 MP")
+			enc.Log = append(enc.Log, "Mana Barrier restored 3 MP!")
+		} else {
+			p.State.RestoreMP(2, m.catalog)
+			enc.Log = append(enc.Log, "🧘 ตั้งรับและรวบรวมพลัง: ฟื้น 2 MP")
 		}
 
 	case "GEAR_ABILITY":
@@ -1352,10 +1400,26 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		m.pveRespawn(p, rng)
 		finish = true
 	}
-	if !finish && !died && enc.PlayerStatus == "poison" {
-		p.State.Damage(3)
-		enc.PlayerStatusTurns--
-		enc.Log = append(enc.Log, "☠️ พิษกัดกร่อน HP 3 หน่วย")
+	if !finish && !died && enc.PlayerStatus != "" {
+		switch enc.PlayerStatus {
+		case "poison":
+			p.State.Damage(3)
+			enc.PlayerStatusTurns--
+			enc.Log = append(enc.Log, "☠️ พิษกัดกร่อน HP 3 หน่วย")
+		case "bleed":
+			p.State.Damage(4)
+			enc.PlayerStatusTurns--
+			enc.Log = append(enc.Log, "🩸 เลือดไหลซึม HP 4 หน่วย")
+		case "burn":
+			p.State.Damage(4)
+			enc.PlayerStatusTurns--
+			enc.Log = append(enc.Log, "🔥 เปลวไฟเผาไหม้ HP 4 หน่วย")
+		case "freeze":
+			enc.PlayerStatusTurns--
+			enc.Log = append(enc.Log, "❄️ ตัวแข็งจากความเย็นยะเยือก (-4 SPD)")
+		default:
+			enc.PlayerStatusTurns--
+		}
 		if enc.PlayerStatusTurns <= 0 {
 			enc.PlayerStatus = ""
 			enc.PlayerStatusTurns = 0
@@ -1363,8 +1427,51 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 		if p.State.HP == 0 {
 			died = true
 			finish = true
-			enc.Log = append(enc.Log, "💀 พิษทำให้คุณหมดสติ")
+			enc.Log = append(enc.Log, "💀 คุณหมดสติจากอาการบาดเจ็บและพิษร้าย")
 			m.pveRespawn(p, rng)
+		}
+	}
+
+	if !finish {
+		for i := range enc.Enemies {
+			e := &enc.Enemies[i]
+			if !e.Alive {
+				continue
+			}
+			if e.Status != "" {
+				dot := 0
+				switch e.Status {
+				case "bleed":
+					dot = 4
+					enc.Log = append(enc.Log, fmt.Sprintf("🩸 เลือดไหลซึมจากบาดแผล! %s เสีย 4 HP", e.Name))
+				case "burn":
+					dot = 4
+					enc.Log = append(enc.Log, fmt.Sprintf("🔥 ไฟเผาไหม้ต่อเนื่อง! %s เสีย 4 HP", e.Name))
+				case "poison":
+					dot = 3
+					enc.Log = append(enc.Log, fmt.Sprintf("☠️ พิษกัดกร่อน! %s เสีย 3 HP", e.Name))
+				case "freeze":
+					enc.Log = append(enc.Log, fmt.Sprintf("❄️ %s เย็นยะเยือกขยับช้าลง (-4 SPD)", e.Name))
+				}
+				if dot > 0 {
+					e.HP = max(0, e.HP-dot)
+					if e.HP == 0 {
+						e.Alive = false
+						enc.Log = append(enc.Log, fmt.Sprintf("💀 %s สิ้นชีพจากผลของสถานะผิดปกติ!", e.Name))
+					}
+				}
+				e.StatusTurns--
+				if e.StatusTurns <= 0 {
+					e.Status = ""
+					e.StatusTurns = 0
+				}
+			}
+			if e.StunResist {
+				e.StunResist = false
+			}
+		}
+		if enc.AliveCount() == 0 {
+			finish = true
 		}
 	}
 
@@ -1442,6 +1549,9 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 				if leveled {
 					enc.Log = append(enc.Log, fmt.Sprintf("🌟 LEVEL UP! You reached Level %d! All stats increased!", p.State.Level))
 				}
+				mpRestored := max(3, stats.MaxMP*3/10)
+				p.State.RestoreMP(mpRestored, m.catalog)
+				enc.Log = append(enc.Log, fmt.Sprintf("✨ สมาธิฟื้นคืนหลังกำชัย: ฟื้นฟู %d MP", mpRestored))
 				m.tryMonsterLoot(p, monsterDef, rng)
 				if monsterDef.Tier == "boss" {
 					completed, err := p.Dungeon.AdvanceFloor()
@@ -1477,12 +1587,29 @@ func (m *Manager) enemiesAttack(p *player, enc *combat.State, stats playerstate.
 		if !e.Alive {
 			continue
 		}
-		chance := combat.ExtraStrikeChance(e.Speed, stats.SPD)
-		extraStrike := chance > 0 && rng.Intn(100) < chance
+		if e.Status == "stun" {
+			if e.Tier == "boss" {
+				enc.Log = append(enc.Log, fmt.Sprintf("👑 %s เป็นบอส ต้านทานสตันเต็มรูปแบบ! (ลดพลังโจมตีและความเร็ว)", e.Name))
+				e.Status = ""
+				e.StatusTurns = 0
+				e.StunResist = true
+			} else {
+				enc.Log = append(enc.Log, fmt.Sprintf("💫 %s ติดสตัน ข้ามการกระทำในเทิร์นนี้!", e.Name))
+				e.Status = ""
+				e.StatusTurns = 0
+				continue
+			}
+		}
+		effectiveSpeed := e.Speed
+		if e.Status == "freeze" {
+			effectiveSpeed = max(1, effectiveSpeed-4)
+		}
+		extraStrike := e.Intent == "ATTACK" && combat.ExtraStrikeEligible(effectiveSpeed, stats.SPD) && e.Status != "freeze"
 		strikeCount := 1
 		if extraStrike {
 			strikeCount = 2
 		}
+		var firstStrikeDmg int
 		for strike := 0; strike < strikeCount; strike++ {
 			if !e.Alive {
 				break
@@ -1500,11 +1627,13 @@ func (m *Manager) enemiesAttack(p *player, enc *combat.State, stats playerstate.
 				rawDmg = e.IntentValue
 				enc.Log = append(enc.Log, fmt.Sprintf("💥 %s unleashes an area attack!", e.Name))
 			} else if strike > 0 {
-				enc.Log = append(enc.Log, fmt.Sprintf("⚡ %s เร็วกว่าและโจมตีซ้ำเบา ๆ (SPD %d%%)", e.Name, chance))
+				enc.Log = append(enc.Log, fmt.Sprintf("⚡ %s เร็วกว่า (SPD %d vs %d) โจมตีซ้ำปกติอีก 1 ครั้ง (40%%)", e.Name, effectiveSpeed, stats.SPD))
 			}
 			dmg := combat.Damage(rawDmg, stats.DEF)
-			if strike > 0 {
-				dmg = combat.Damage(int(float64(dmg)*0.60), 0)
+			if strike == 0 {
+				firstStrikeDmg = dmg
+			} else {
+				dmg = max(1, int(float64(firstStrikeDmg)*0.40))
 			}
 			if heavyAttack {
 				if reduction := m.equipmentAbilityValue(p, "heavy_reduction"); reduction > 0 {
@@ -1862,18 +1991,46 @@ func (m *Manager) tryMonsterLoot(p *player, monster combat.Monster, rng *mathran
 	if kit == "" || kit == "default" || kit == "warrior" {
 		kit = "knight"
 	}
-	eligible := pool[:0]
+	affinityWeapons := make([]string, 0, len(pool))
+	crossWeapons := make([]string, 0, len(pool))
+	otherItems := make([]string, 0, len(pool))
+
 	for _, itemID := range pool {
 		def, ok := m.catalog.Get(itemID)
-		if ok && (def.Type != items.Weapon || weaponClass(def) == kit) {
-			eligible = append(eligible, itemID)
+		if !ok {
+			continue
+		}
+		if def.Type == items.Weapon {
+			if weaponClass(def) == kit {
+				affinityWeapons = append(affinityWeapons, itemID)
+			} else {
+				crossWeapons = append(crossWeapons, itemID)
+			}
+		} else {
+			otherItems = append(otherItems, itemID)
 		}
 	}
-	pool = eligible
-	if len(pool) == 0 {
+
+	var id string
+	totalWeapons := len(affinityWeapons) + len(crossWeapons)
+	if totalWeapons > 0 && (len(otherItems) == 0 || rng.Intn(100) < 50) {
+		if len(affinityWeapons) > 0 && (len(crossWeapons) == 0 || rng.Intn(100) < 60) {
+			id = affinityWeapons[rng.Intn(len(affinityWeapons))]
+		} else if len(crossWeapons) > 0 {
+			id = crossWeapons[rng.Intn(len(crossWeapons))]
+		} else {
+			id = affinityWeapons[rng.Intn(len(affinityWeapons))]
+		}
+	} else if len(otherItems) > 0 {
+		id = otherItems[rng.Intn(len(otherItems))]
+	} else if len(affinityWeapons) > 0 {
+		id = affinityWeapons[rng.Intn(len(affinityWeapons))]
+	} else if len(crossWeapons) > 0 {
+		id = crossWeapons[rng.Intn(len(crossWeapons))]
+	}
+	if id == "" {
 		return
 	}
-	id := pool[rng.Intn(len(pool))]
 	if err := p.State.Add(id, 1, m.catalog); err == nil {
 		p.Combat.LootItemID = id
 		p.recordAcquiredItem(id)

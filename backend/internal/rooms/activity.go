@@ -39,7 +39,8 @@ func (m *Manager) beginActivity(p *player, node dungeon.Node) error {
 		stats := p.State.Stats(m.catalog)
 		heal := (stats.MaxHP*35 + 99) / 100
 		p.State.RestoreHP(p.State.HP+heal, m.catalog)
-		p.State.RestoreMP(15, m.catalog)
+		mpHeal := max(4, (stats.MaxMP*20+99)/100)
+		p.State.RestoreMP(mpHeal, m.catalog)
 		return m.resolveRoom(p, false)
 	case dungeon.TreasureRoom:
 		kit := p.State.Kit
@@ -65,7 +66,7 @@ func (m *Manager) beginActivity(p *player, node dungeon.Node) error {
 			kit = "knight"
 		}
 		for _, item := range m.catalog.List() {
-			if item.Price > 0 && (item.Type != items.Weapon || weaponClass(item) == kit) {
+			if item.Price > 0 {
 				activity.Stock = append(activity.Stock, ShopStock{ItemID: item.ID, Name: item.Name, Price: item.Price, Available: true})
 			}
 		}

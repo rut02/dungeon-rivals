@@ -49,6 +49,10 @@ type Enemy struct {
 	Intent       string `json:"intent"` // "ATTACK", "HEAVY", "BUFF"
 	IntentValue  int    `json:"intent_value"`
 	Alive        bool   `json:"alive"`
+	Status       string `json:"status,omitempty"`
+	StatusTurns  int    `json:"status_turns,omitempty"`
+	Marked       bool   `json:"marked,omitempty"`
+	StunResist   bool   `json:"stun_resist,omitempty"`
 }
 
 type Summon struct {
@@ -83,6 +87,7 @@ type State struct {
 	PlayerStatus       string         `json:"player_status,omitempty"`
 	PlayerStatusTurns  int            `json:"player_status_turns,omitempty"`
 	ShieldBarrier      int            `json:"shield_barrier,omitempty"`
+	MageSkillUsed      bool           `json:"mage_skill_used,omitempty"`
 	EscapeSuccess      bool           `json:"escape_success"`
 	LootItemID         string         `json:"loot_item_id,omitempty"`
 	Log                []string       `json:"log"`
@@ -313,6 +318,11 @@ func (s *State) Selected() *Enemy {
 
 // Damage applies the MVP minimum-one damage rule.
 func Damage(attack, defense int) int { return max(1, attack-defense) }
+
+// ExtraStrikeEligible returns true if attackerSpeed is at least 5 points greater than defenderSpeed.
+func ExtraStrikeEligible(attackerSpeed, defenderSpeed int) bool {
+	return attackerSpeed-defenderSpeed >= 5
+}
 
 // ExtraStrikeChance returns a capped, speed-difference-based chance for one
 // light follow-up hit. It never grants a guaranteed second turn.

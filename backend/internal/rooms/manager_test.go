@@ -716,3 +716,116 @@ func TestBotLobbyDungeonAndPvPFlow(t *testing.T) {
 		t.Fatal("room should be cleaned up when all human players leave")
 	}
 }
+
+func TestPlanAffinityPassivesAndExtraStrikeAndMP(t *testing.T) {
+	// 1. ExtraStrikeEligible
+	if !combat.ExtraStrikeEligible(15, 9) {
+		t.Fatal("SPD 15 vs 9 (diff 6) should be eligible for extra strike")
+	}
+	if combat.ExtraStrikeEligible(14, 10) {
+		t.Fatal("SPD 14 vs 10 (diff 4) should not be eligible for extra strike")
+	}
+
+	// 2. Setup room and player
+	m := managerWithCombat(t)
+	host, err := m.Create("Host")
+	if err != nil {
+		t.Fatal(err)
+	}
+	guest, err := m.Join(host.RoomCode, "Guest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := m.rooms[host.RoomCode]
+	_ = m.Ready(r, host.PlayerID, true)
+	_ = m.Ready(r, guest.PlayerID, true)
+	if err := m.Start(r, host.PlayerID); err != nil {
+		t.Fatal(err)
+	}
+	p := r.Players[0]
+
+	// Check Knight weapon skill gives shield barrier (+5)
+	p.Combat = &combat.State{
+		MonsterID: "bat_swarm",
+		Name:      "Bat Swarm",
+		Enemies: []combat.Enemy{
+			{Index: 0, MonsterID: "bat_swarm", Name: "Bat Swarm", HP: 1, MaxHP: 100, Attack: 0, Defense: 0, Speed: 5, Alive: true},
+		},
+		SelectedEnemy: 0,
+	}
+	p.State.Kit = "knight"
+	p.State.Equipment.Weapon = "iron_sword"
+	p.State.MP = 20
+	if err := m.combatAction(r, host.PlayerID, "SKILL", ""); err != nil {
+		t.Fatalf("knight skill failed: %v", err)
+	}
+	if p.Combat.ShieldBarrier != 5 {
+		t.Fatalf("knight weapon skill must grant 5 shield barrier, got %d", p.Combat.ShieldBarrier)
+	}
+
+	// Check Mage 50% MP discount on first skill
+	p.Combat = &combat.State{
+		MonsterID: "bat_swarm",
+		Name:      "Bat Swarm",
+		Enemies: []combat.Enemy{
+			{Index: 0, MonsterID: "bat_swarm", Name: "Bat Swarm", HP: 100, MaxHP: 100, Attack: 5, Defense: 0, Speed: 5, Alive: true},
+		},
+		SelectedEnemy: 0,
+	}
+	p.State.Kit = "mage"
+	p.State.Equipment.Weapon = "apprentice_staff"
+	p.State.MP = 20
+	apprenticeStaff, _ := m.catalog.Get("apprentice_staff")
+	normalCost := apprenticeStaff.SkillCost
+	if normalCost <= 0 {
+		normalCost = 4
+	}
+	if err := m.combatAction(r, host.PlayerID, "SKILL", ""); err != nil {
+		t.Fatalf("mage skill failed: %v", err)
+	}
+	expectedSaved := max(3, normalCost/2)
+	actualConsumed := 20 - p.State.MP
+	if actualConsumed != max(1, normalCost-expectedSaved) {
+		t.Fatalf("mage first skill MP consumed want %d, got %d", max(1, normalCost-expectedSaved), actualConsumed)
+	}
+
+	// Check victory restores 30% MaxMP
+	p.State.MP = 5
+	p.Combat = &combat.State{
+		MonsterID: "bat_swarm",
+		Name:      "Bat Swarm",
+		Enemies: []combat.Enemy{
+			{Index: 0, MonsterID: "bat_swarm", Name: "Bat Swarm", HP: 1, MaxHP: 20, Attack: 1, Defense: 0, Speed: 1, Alive: true},
+		},
+		SelectedEnemy: 0,
+	}
+	if err := m.combatAction(r, host.PlayerID, "ATTACK", ""); err != nil {
+		t.Fatalf("attack failed: %v", err)
+	}
+	if !p.Combat.Victory {
+		t.Fatal("combat should be victory")
+	}
+	maxMP := p.State.Stats(m.catalog).MaxMP
+	expectedMPGain := max(3, maxMP*3/10)
+	if p.State.MP < 5+expectedMPGain {
+		t.Fatalf("post-combat MP want at least %d, got %d", 5+expectedMPGain, p.State.MP)
+	}
+
+	// Check Defend restores 2 MP (or 3 MP with staff)
+	p.Combat = &combat.State{
+		MonsterID: "bat_swarm",
+		Name:      "Bat Swarm",
+		Enemies: []combat.Enemy{
+			{Index: 0, MonsterID: "bat_swarm", Name: "Bat Swarm", HP: 100, MaxHP: 100, Attack: 1, Defense: 0, Speed: 1, Alive: true},
+		},
+		SelectedEnemy: 0,
+	}
+	p.State.MP = 10
+	p.State.Equipment.Weapon = "iron_sword"
+	if err := m.combatAction(r, host.PlayerID, "DEFEND", ""); err != nil {
+		t.Fatalf("defend failed: %v", err)
+	}
+	if p.State.MP != 12 {
+		t.Fatalf("defend without staff want 12 MP, got %d", p.State.MP)
+	}
+}

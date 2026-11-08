@@ -277,8 +277,8 @@
 }
 
 .battle-unit-sprite {
-  width: 132px;
-  height: 142px;
+  width: 155px;
+  height: 165px;
   display: grid;
   place-items: center;
   background: radial-gradient(ellipse at 50% 86%, rgba(116, 91, 151, 0.3), transparent 66%);
@@ -297,8 +297,8 @@
 }
 
 .summon-battle-sprite {
-  width: 112px;
-  height: 120px;
+  width: 130px;
+  height: 140px;
 }
 
 .summon-frontline .summon-battle-sprite {
@@ -533,8 +533,8 @@
 }
 
 .monster-card-sprite {
-  width: 175px;
-  height: 175px;
+  width: 195px;
+  height: 195px;
   display: grid;
   place-items: center;
   position: relative;
@@ -542,8 +542,8 @@
 }
 
 .monster-card-sprite img {
-  width: 155px;
-  height: 155px;
+  width: 175px;
+  height: 175px;
   object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -552,17 +552,70 @@
 }
 
 .monster-card.is-boss-card .monster-card-sprite {
-  width: 205px;
-  height: 205px;
+  width: 235px;
+  height: 235px;
 }
 
 .monster-card.is-boss-card .monster-card-sprite img {
-  width: 190px;
-  height: 190px;
+  width: 215px;
+  height: 215px;
 }
 
 .monster-card:hover .monster-card-sprite img {
   transform: scale(1.08);
+}
+
+.monster-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  justify-content: center;
+}
+
+.monster-status-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.monster-status-tag.status-marked {
+  background: rgba(220, 53, 69, 0.25);
+  color: #ff6b6b;
+  border: 1px solid rgba(220, 53, 69, 0.5);
+}
+
+.monster-status-tag.status-bleed {
+  background: rgba(180, 20, 20, 0.3);
+  color: #ff5252;
+  border: 1px solid rgba(180, 20, 20, 0.6);
+}
+
+.monster-status-tag.status-burn {
+  background: rgba(255, 140, 0, 0.3);
+  color: #ffa726;
+  border: 1px solid rgba(255, 140, 0, 0.6);
+}
+
+.monster-status-tag.status-poison {
+  background: rgba(76, 175, 80, 0.3);
+  color: #81c784;
+  border: 1px solid rgba(76, 175, 80, 0.6);
+}
+
+.monster-status-tag.status-freeze {
+  background: rgba(33, 150, 243, 0.3);
+  color: #64b5f6;
+  border: 1px solid rgba(33, 150, 243, 0.6);
+}
+
+.monster-status-tag.status-stun {
+  background: rgba(255, 235, 59, 0.3);
+  color: #fff59d;
+  border: 1px solid rgba(255, 235, 59, 0.6);
 }
 
 .monster-card-stats {
@@ -1339,15 +1392,15 @@
 
 .duel-sprite-box {
   position: relative;
-  width: 175px;
-  height: 175px;
+  width: 195px;
+  height: 195px;
   display: grid;
   place-items: center;
 }
 
 .duel-giant-sprite {
-  width: 155px;
-  height: 155px;
+  width: 175px;
+  height: 175px;
   object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;

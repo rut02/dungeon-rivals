@@ -351,13 +351,8 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 			m.appendPvPLog(r, fmt.Sprintf("🩸 Blood Chalice ฟื้น HP %d ให้ %s", healed, p.Name))
 		}
 		m.appendPvPLog(r, fmt.Sprintf("⚔️ %s โจมตี %s สร้างความเสียหาย %d หน่วย%s", p.Name, target.Name, dealt, critText))
-		followUpBonus := m.equipmentAbilityValue(p, "followup")
-		if pStats.Archetype == "bow" {
-			followUpBonus += m.equipmentAbilityValue(p, "ranger_followup")
-		}
-		followUpChance := min(32, combat.ExtraStrikeChance(pStats.SPD, tStats.SPD)+followUpBonus)
-		if target.State.HP > 0 && p.State.HP > 0 && followUpChance > 0 && mathrand.Intn(100) < followUpChance {
-			followUpRaw := combat.Damage(int(float64(pStats.ATK)*0.60), tStats.DEF)
+		if target.State.HP > 0 && p.State.HP > 0 && combat.ExtraStrikeEligible(pStats.SPD, tStats.SPD) {
+			followUpRaw := max(1, int(float64(rawDmg)*0.40))
 			followUpDamage := m.applyPvPDefenseModifiers(p, target, followUpRaw, tStats)
 			before = target.State.HP
 			target.State.Damage(followUpDamage)
@@ -366,7 +361,7 @@ func (m *Manager) pvpAction(r *room, playerID, action, targetID, itemID string) 
 			if healed := m.healFromPvPDamage(p, followUpDealt); healed > 0 {
 				m.appendPvPLog(r, fmt.Sprintf("🩸 Blood Chalice ฟื้น HP %d ให้ %s", healed, p.Name))
 			}
-			m.appendPvPLog(r, fmt.Sprintf("⚡ %s โจมตีซ้ำจาก SPD อีก %d หน่วย (%d%%)", p.Name, followUpDealt, followUpChance))
+			m.appendPvPLog(r, fmt.Sprintf("⚡ %s เร็วกว่า (SPD %d vs %d) โจมตีซ้ำปกติอีก 1 ครั้ง สร้าง %d หน่วย (40%%)", p.Name, pStats.SPD, tStats.SPD, followUpDealt))
 		}
 
 	case "SKILL":

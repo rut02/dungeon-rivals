@@ -60,6 +60,9 @@ type EnemyView = {
   intent_value: number
   alive: boolean
   aoe_chance?: number
+  status?: string
+  status_turns?: number
+  marked?: boolean
 }
 
 type SummonView = { element: 'fire' | 'earth' | 'water' | 'wind'; name: string; hp: number; max_hp: number; turns_remaining: number }
@@ -2274,6 +2277,21 @@ function CombatPanel({
               ) : (
                 <div className="monster-intent-pill" style={{ color: '#888' }}>
                   💀 กำจัดแล้ว
+                </div>
+              )}
+
+              {(enemy.marked || enemy.status) && (
+                <div className="monster-status-row">
+                  {enemy.marked && <span className="monster-status-tag status-marked">🎯 มาร์กจุดตาย (+20% DMG)</span>}
+                  {enemy.status && (
+                    <span className={`monster-status-tag status-${enemy.status}`}>
+                      {enemy.status === 'bleed' && `🩸 เลือดไหล (${enemy.status_turns || 1})`}
+                      {enemy.status === 'burn' && `🔥 ไฟไหม้ (${enemy.status_turns || 1})`}
+                      {enemy.status === 'poison' && `☠️ ติดพิษ (${enemy.status_turns || 1})`}
+                      {enemy.status === 'freeze' && `❄️ แช่แข็ง (${enemy.status_turns || 1})`}
+                      {enemy.status === 'stun' && `💫 สตัน (${enemy.status_turns || 1})`}
+                    </span>
+                  )}
                 </div>
               )}
 

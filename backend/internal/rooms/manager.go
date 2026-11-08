@@ -1005,14 +1005,14 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 	}
 
 	// Ranger First Strike on Turn 1
-	if stats.Archetype == "bow" && !enc.FirstStrike && target != nil {
+	if kit == "ranger" && !enc.FirstStrike && target != nil {
 		firstDmg := max(1, stats.ATK/2)
 		target.HP = max(0, target.HP-firstDmg)
 		enc.FirstStrike = true
 		enc.Log = append(enc.Log, fmt.Sprintf("🏹 First Strike! You hit %s for %d damage before battle starts!", target.Name, firstDmg))
-		if kit == "ranger" && !target.Marked {
+		if !target.Marked {
 			target.Marked = true
-			enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Ranger Affinity] เล็งจุดตาย! ทำเครื่องหมายใส่ %s (เป้าหมายรับดาเมจเดี่ยว +20%%)", target.Name))
+			enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Ranger Passive] เล็งจุดตาย! ทำเครื่องหมายใส่ %s (เป้าหมายรับดาเมจเดี่ยว +20%%)", target.Name))
 		}
 		if target.HP == 0 {
 			target.Alive = false
@@ -1034,11 +1034,11 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			critChance := 30
 			if stats.Archetype == "daggers" {
 				critChance += m.equipmentAbilityValue(p, "rogue_crit")
-				if kit == "rogue" {
-					critChance += 15 // Rogue affinity passive bonus
-				}
 			}
-			if stats.Archetype == "daggers" && rng.Intn(100) < min(50, critChance) {
+			if kit == "rogue" {
+				critChance += 15 // Rogue passive bonus
+			}
+			if (stats.Archetype == "daggers" || kit == "rogue") && rng.Intn(100) < min(50, critChance) {
 				dmg = int(float64(dmg) * 1.8)
 				enc.Log = append(enc.Log, "💥 CRITICAL STRIKE!")
 			} else if stats.Archetype == "staff" {
@@ -1052,17 +1052,17 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			target.HP = max(0, target.HP-dmg)
 			m.healFromDamage(p, hpBefore, dmg, enc)
 			enc.Log = append(enc.Log, fmt.Sprintf("You dealt %d damage to %s.", dmg, target.Name))
-			if kit == "rogue" && stats.Archetype == "daggers" && target.HP > 0 {
+			if kit == "rogue" && target.HP > 0 {
 				if rng.Intn(100) < 35 {
 					target.Status = "bleed"
 					target.StatusTurns = 2
-					enc.Log = append(enc.Log, fmt.Sprintf("🩸 [Rogue Affinity] คมมีดกรีดลึก! %s ติดสถานะเลือดไหล (Bleed 2 รอบ)", target.Name))
+					enc.Log = append(enc.Log, fmt.Sprintf("🩸 [Rogue Passive] คมอาวุธกรีดลึก! %s ติดสถานะเลือดไหล (Bleed 2 รอบ)", target.Name))
 				}
 			}
-			if kit == "ranger" && stats.Archetype == "bow" && target.HP > 0 {
+			if kit == "ranger" && target.HP > 0 {
 				if !target.Marked {
 					target.Marked = true
-					enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Ranger Affinity] เล็งจุดตาย! ทำเครื่องหมายใส่ %s (เป้าหมายรับดาเมจเดี่ยว +20%%)", target.Name))
+					enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Ranger Passive] เล็งจุดตาย! ทำเครื่องหมายใส่ %s (เป้าหมายรับดาเมจเดี่ยว +20%%)", target.Name))
 				}
 			}
 			if target.HP == 0 {
@@ -1076,11 +1076,11 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 				target.HP = max(0, target.HP-followUp)
 				m.healFromDamage(p, hpBefore, followUp, enc)
 				enc.Log = append(enc.Log, fmt.Sprintf("⚡ SPD Advantage! (SPD %d vs %d) โจมตีซ้ำปกติเพิ่ม 1 ครั้ง ใส่ %s อีก %d ดาเมจ (40%%)", stats.SPD, target.Speed, target.Name, followUp))
-				if kit == "rogue" && stats.Archetype == "daggers" && target.HP > 0 && target.Status == "" {
+				if kit == "rogue" && target.HP > 0 && target.Status == "" {
 					if rng.Intn(100) < 18 {
 						target.Status = "bleed"
 						target.StatusTurns = 2
-						enc.Log = append(enc.Log, fmt.Sprintf("🩸 [Rogue Affinity] โจมตีซ้ำติดสถานะเลือดไหลใส่ %s!", target.Name))
+						enc.Log = append(enc.Log, fmt.Sprintf("🩸 [Rogue Passive] โจมตีซ้ำติดสถานะเลือดไหลใส่ %s!", target.Name))
 					}
 				}
 				if target.HP == 0 {
@@ -1119,19 +1119,19 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 			cost = 4
 		}
 		cost = max(1, cost-m.equipmentAbilityValue(p, "skill_cost"))
-		if kit == "mage" && stats.Archetype == "staff" && !enc.MageSkillUsed {
+		if kit == "mage" && !enc.MageSkillUsed {
 			enc.MageSkillUsed = true
 			savedMP := max(3, cost/2)
 			cost = max(1, cost-savedMP)
-			enc.Log = append(enc.Log, fmt.Sprintf("✨ [Mage Affinity] สมาธิแรกเริ่ม: ลดค่าร่าย MP สกิลลง %d หน่วย!", savedMP))
+			enc.Log = append(enc.Log, fmt.Sprintf("✨ [Mage Passive] สมาธิจิตแห่งจอมเวท: ลดค่าร่าย MP สกิลแรกในการต่อสู้ลง %d หน่วย!", savedMP))
 		}
 		if !p.State.ConsumeMP(cost) {
 			return playerstate.ErrNotEnoughMP
 		}
 		enc.SkillCooldown = 3 // 2 turns cooldown after turn ends
-		if kit == "knight" && stats.Archetype == "sword" {
+		if kit == "knight" {
 			enc.ShieldBarrier += 5
-			enc.Log = append(enc.Log, "🛡️ [Knight Affinity] สกิลศัสตราเสริมบาเรียป้องกัน +5 หน่วย!")
+			enc.Log = append(enc.Log, "🛡️ [Knight Passive] จิตวิญญาณอัศวินปลุกพลังบาเรียป้องกัน +5 หน่วย!")
 		}
 		skillATK := (stats.ATK*(100+m.equipmentAbilityValue(p, "skill_damage")) + 99) / 100
 		castSkill := func() {
@@ -1246,9 +1246,9 @@ func (m *Manager) combatAction(r *room, playerID, action, itemID string, extra .
 					target.HP = max(0, target.HP-dmg)
 					m.healFromDamage(p, hpBefore, dmg, enc)
 					enc.Log = append(enc.Log, fmt.Sprintf("Dealt %d devastating damage to %s!", dmg, target.Name))
-					if kit == "ranger" && stats.Archetype == "bow" && target.HP > 0 && !target.Marked {
+					if kit == "ranger" && target.HP > 0 && !target.Marked {
 						target.Marked = true
-						enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Ranger Affinity] เล็งจุดตาย! ทำเครื่องหมายใส่ %s (เป้าหมายรับดาเมจเดี่ยว +20%%)", target.Name))
+						enc.Log = append(enc.Log, fmt.Sprintf("🎯 [Ranger Passive] เล็งจุดตาย! ทำเครื่องหมายใส่ %s (เป้าหมายรับดาเมจเดี่ยว +20%%)", target.Name))
 					}
 					if target.HP == 0 {
 						target.Alive = false
